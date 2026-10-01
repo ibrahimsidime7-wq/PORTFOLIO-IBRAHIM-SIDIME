@@ -1,0 +1,6 @@
+{
+  "name": "Ibrahim Sidime - Monteur Vidéo & Espace Admin",
+  "description": "Portfolio professionnel et espace administrateur d'Ibrahim Sidime, monteur vidéo et créateur de contenu à Abidjan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
