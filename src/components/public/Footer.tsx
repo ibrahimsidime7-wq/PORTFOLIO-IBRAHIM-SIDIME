@@ -1,30 +1,34 @@
 import React from 'react';
 import { Logo } from '../common/Logo';
 import { useApp } from '../../context/AppContext';
-import { MapPin, Phone, Lock } from 'lucide-react';
+import { MapPin, Phone, Mail } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { profile, navigate, isAuthenticated } = useApp();
+  const { profile, navigate } = useApp();
 
   return (
     <footer className="border-t border-slate-900 bg-[#050810] pt-12 pb-8 text-slate-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Main Footer Row matching the screenshot */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-900">
-          
-          {/* Left: Brand Logo */}
           <Logo onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
 
-          {/* Center: Location & Phone */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-300">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-slate-300">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-orange-500 shrink-0" />
               <span>{profile.location}</span>
             </div>
-
             <div className="hidden sm:block text-slate-700">|</div>
-
+            <a
+              href={`https://mail.google.com/mail/?view=cm&fs=1&to=ibrahimsidime7@gmail.com&su=Demande%20de%20projet%20vid%C3%A9o`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 text-white hover:text-orange-400 transition-colors group"
+              title="Écrire directement par Gmail à ibrahimsidime7@gmail.com"
+            >
+              <Mail className="w-4 h-4 text-red-400 group-hover:text-orange-400 shrink-0" />
+              <span>ibrahimsidime7@gmail.com</span>
+            </a>
+            <div className="hidden sm:block text-slate-700">|</div>
             <a
               href={`tel:+225${profile.phone.replace(/\s+/g, '')}`}
               className="flex items-center gap-2 hover:text-orange-400 transition-colors"
@@ -34,9 +38,7 @@ export const Footer: React.FC = () => {
             </a>
           </div>
 
-          {/* Right: Social Media Icons matching the screenshot */}
           <div className="flex items-center gap-3 text-slate-400">
-            {/* TikTok */}
             <a
               href={profile.socials.tiktok}
               target="_blank"
@@ -49,7 +51,6 @@ export const Footer: React.FC = () => {
               </svg>
             </a>
 
-            {/* Instagram */}
             <a
               href={profile.socials.instagram}
               target="_blank"
@@ -62,7 +63,6 @@ export const Footer: React.FC = () => {
               </svg>
             </a>
 
-            {/* Facebook */}
             <a
               href={profile.socials.facebook}
               target="_blank"
@@ -75,7 +75,6 @@ export const Footer: React.FC = () => {
               </svg>
             </a>
 
-            {/* YouTube */}
             <a
               href={profile.socials.youtube}
               target="_blank"
@@ -88,7 +87,6 @@ export const Footer: React.FC = () => {
               </svg>
             </a>
 
-            {/* LinkedIn */}
             <a
               href={profile.socials.linkedin}
               target="_blank"
@@ -103,21 +101,20 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Copyright & Admin portal link */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
-          <div>
-            © 2026 Ibrahim Sidime — Tous droits réservés.
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2 border-t border-slate-900/60">
+          <div className="text-center sm:text-left">
+            © 2026 Ibrahim Sidime. Tous droits réservés.
           </div>
-
-          <button
-            onClick={() => navigate(isAuthenticated ? '/admin' : '/login')}
-            className="flex items-center gap-1.5 text-slate-500 hover:text-orange-400 transition-colors cursor-pointer py-1"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            <span>Espace Administration</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/login')}
+              className="text-slate-600 hover:text-slate-400 text-[11px] transition-colors cursor-pointer"
+              title="Accès Administrateur"
+            >
+              Admin
+            </button>
+          </div>
         </div>
-
       </div>
     </footer>
   );

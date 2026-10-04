@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { CheckCircle2, ChevronDown, ChevronUp, MapPin, Phone } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 
 export const AboutSection: React.FC = () => {
   const { profile, setIsContactModalOpen, setContactModalType } = useApp();
@@ -9,7 +9,6 @@ export const AboutSection: React.FC = () => {
   return (
     <section id="a-propos" className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="rounded-3xl bg-[#090e1c] border border-slate-800/90 p-6 sm:p-10 lg:p-12 relative overflow-hidden shadow-2xl">
-        {/* Subtle orange ambient glow in background */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
@@ -42,13 +41,13 @@ export const AboutSection: React.FC = () => {
             </h2>
 
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-              « Je suis Ibrahim Sidime, monteur vidéo et créateur de contenu passionné par l’image, le montage et la création visuelle. Mon objectif est de transformer chaque idée en une vidéo claire, dynamique et adaptée à son public. »
+              Je suis Ibrahim Sidime, monteur vidéo et créateur de contenu passionné par l'image, le montage et la création visuelle. Mon objectif est de transformer chaque idée en une vidéo claire, dynamique et adaptée à son public.
             </p>
 
             {showFull && (
               <div className="pt-2 text-slate-400 text-sm leading-relaxed space-y-3 animate-in fade-in duration-300">
                 <p>
-                  Fort d’une solide expérience dans le montage publicitaire, les vidéos d'entreprise et les formats verticaux à fort engagement pour les créateurs, je maîtrise l'ensemble du workflow de post-production : dérushage, montage dynamique, habillage graphique, étalonnage cinématographique et mixage sonore.
+                  Fort d'une solide expérience dans le montage publicitaire, les vidéos d'entreprise et les formats verticaux à fort engagement pour les créateurs, je maîtrise l'ensemble du workflow de post-production : dérushage, montage dynamique, habillage graphique, étalonnage cinématographique et mixage sonore.
                 </p>
                 <div className="grid grid-cols-2 gap-2 pt-2 text-xs text-slate-300">
                   <div className="flex items-center gap-2">
@@ -57,7 +56,7 @@ export const AboutSection: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-orange-500" />
-                    <span>Formats adaptés (16:9 & 9:16)</span>
+                    <span>Formats adaptés (16:9 &amp; 9:16)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-orange-500" />

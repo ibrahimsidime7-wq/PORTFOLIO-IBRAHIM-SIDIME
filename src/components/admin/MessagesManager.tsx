@@ -1,20 +1,16 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
-  MessageSquare, 
   Trash2, 
-  CheckCircle, 
   Clock, 
   Phone, 
   Mail, 
   Search, 
-  Send,
-  MessageCircle,
-  Check
+  MessageCircle 
 } from 'lucide-react';
 
 export const MessagesManager: React.FC = () => {
-  const { messages, markMessageRead, deleteMessage, showToast } = useApp();
+  const { messages, markMessageRead, deleteMessage } = useApp();
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     messages[0]?.id || null
   );
@@ -42,21 +38,19 @@ export const MessagesManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Title */}
       <div>
         <div className="flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest mb-1">
           <span className="w-3 h-0.5 bg-orange-500 inline-block" />
           <span>ADMIN &gt; MESSAGES</span>
         </div>
         <h2 className="text-2xl font-bold text-white font-syne">
-          Demandes & Messages Clients
+          Demandes &amp; Messages Clients ({messages.length})
         </h2>
         <p className="text-xs text-slate-400 mt-1">
           Consultez les demandes reçues via le portfolio public et répondez rapidement à vos futurs clients.
         </p>
       </div>
 
-      {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-72">
           <input
@@ -81,14 +75,12 @@ export const MessagesManager: React.FC = () => {
         </button>
       </div>
 
-      {/* Messages Layout: Master-Detail */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Messages List (Left column 5) */}
+        {/* Messages List */}
         <div className="lg:col-span-5 space-y-3">
           {filteredMessages.length === 0 ? (
             <div className="p-8 rounded-2xl bg-[#0a0f1e] border border-slate-800 text-center text-xs text-slate-400">
-              Aucun message trouvé.
+              Aucun message trouvé
             </div>
           ) : (
             filteredMessages.map((msg) => {
@@ -119,11 +111,9 @@ export const MessagesManager: React.FC = () => {
                       {msg.date}
                     </span>
                   </div>
-
                   <div className="text-xs font-semibold text-orange-400 mb-1">
                     {msg.projectType}
                   </div>
-
                   <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
                     {msg.message}
                   </p>
@@ -133,11 +123,10 @@ export const MessagesManager: React.FC = () => {
           )}
         </div>
 
-        {/* Selected Message Detail (Right column 7) */}
+        {/* Selected Message Detail */}
         <div className="lg:col-span-7">
           {selectedMessage ? (
             <div className="rounded-3xl bg-[#0a0f1e] border border-slate-800/90 p-6 sm:p-8 shadow-2xl space-y-6">
-              {/* Header */}
               <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-slate-800">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -176,24 +165,22 @@ export const MessagesManager: React.FC = () => {
                       deleteMessage(selectedMessage.id);
                     }
                   }}
-                  className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                  className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
                   title="Supprimer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Subject Tag */}
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Type de projet demandé :
+                  Type de projet demandé
                 </span>
                 <div className="mt-1 inline-block px-3 py-1 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 font-semibold text-xs">
                   {selectedMessage.projectType}
                 </div>
               </div>
 
-              {/* Message Content */}
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   Message du client :
@@ -203,7 +190,6 @@ export const MessagesManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quick Actions to Reply */}
               <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center gap-3">
                 {selectedMessage.phone && (
                   <a
@@ -218,7 +204,6 @@ export const MessagesManager: React.FC = () => {
                     <span>Répondre sur WhatsApp</span>
                   </a>
                 )}
-
                 <a
                   href={`mailto:${selectedMessage.email}?subject=Réponse%20à%20votre%20demande%20de%20projet%20vidéo&body=Bonjour%20${encodeURIComponent(
                     selectedMessage.name
@@ -236,7 +221,6 @@ export const MessagesManager: React.FC = () => {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

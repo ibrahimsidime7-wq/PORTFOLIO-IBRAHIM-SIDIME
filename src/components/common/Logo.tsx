@@ -17,7 +17,7 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', onClick, className = ''
       onClick={onClick}
       className={`flex items-center gap-3 cursor-pointer select-none group transition-opacity hover:opacity-95 ${className}`}
     >
-      {/* Orange geometric play triangle icon matching the reference */}
+      {/* Orange geometric play triangle icon */}
       <div className={`relative flex items-center justify-center shrink-0 ${iconSize}`}>
         <svg 
           viewBox="0 0 32 32" 
@@ -25,7 +25,6 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', onClick, className = ''
           xmlns="http://www.w3.org/2000/svg"
           className="w-full h-full drop-shadow-[0_0_12px_rgba(255,106,0,0.5)] transition-transform group-hover:scale-105 duration-200"
         >
-          {/* Outer triangular outline */}
           <polygon 
             points="6,4 28,16 6,28" 
             stroke="#ff6a00" 
@@ -33,7 +32,6 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', onClick, className = ''
             strokeLinejoin="round"
             className="transition-colors group-hover:stroke-orange-400"
           />
-          {/* Inner accent dot or cut */}
           <polygon 
             points="12,11 20,16 12,21" 
             fill="#ff6a00" 
@@ -48,7 +46,7 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', onClick, className = ''
           <span className="text-orange-500 font-extrabold">SIDIME</span>
         </div>
         <span className={`text-slate-400 font-medium tracking-wider uppercase ${subSize}`}>
-          MONTEUR VIDÉO • CRÉATEUR DE CONTENU
+          MONTEUR VIDÉO & CRÉATEUR DE CONTENU
         </span>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from '../common/Logo';
 import { useApp } from '../../context/AppContext';
-import { ArrowUpRight, Menu, X, Shield } from 'lucide-react';
+import { ArrowUpRight, Menu, X } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { navigate, setIsContactModalOpen, setContactModalType, isAuthenticated } = useApp();
+  const { setIsContactModalOpen, setContactModalType } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -40,46 +40,38 @@ export const Navbar: React.FC = () => {
         <nav className="hidden md:flex items-center gap-8">
           <button
             onClick={() => scrollTo('accueil')}
-            className="text-sm font-semibold text-orange-500 relative py-1 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-orange-500 transition-colors"
+            className="text-sm font-semibold text-orange-500 relative py-1 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-orange-500 transition-colors cursor-pointer"
           >
             Accueil
           </button>
           <button
             onClick={() => scrollTo('a-propos')}
-            className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            className="text-sm font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             À propos
           </button>
           <button
             onClick={() => scrollTo('services')}
-            className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            className="text-sm font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             Mes services
           </button>
           <button
             onClick={() => scrollTo('projets')}
-            className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            className="text-sm font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             Réalisations
           </button>
           <button
             onClick={() => scrollTo('contact')}
-            className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            className="text-sm font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             Contact
           </button>
         </nav>
 
-        {/* Right CTA & Admin Access */}
+        {/* Right CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={() => navigate(isAuthenticated ? '/admin' : '/login')}
-            title="Espace Administrateur"
-            className="p-2 text-slate-400 hover:text-orange-400 rounded-lg hover:bg-slate-800/50 transition-colors"
-          >
-            <Shield className="w-4 h-4" />
-          </button>
-
           <button
             onClick={() => {
               setContactModalType('contact');
@@ -99,13 +91,13 @@ export const Navbar: React.FC = () => {
               setContactModalType('contact');
               setIsContactModalOpen(true);
             }}
-            className="px-3.5 py-1.5 rounded-full bg-orange-500 text-white text-xs font-semibold"
+            className="px-3.5 py-1.5 rounded-full bg-orange-500 text-white text-xs font-semibold cursor-pointer"
           >
             Contact
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors"
+            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors cursor-pointer"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -145,27 +137,17 @@ export const Navbar: React.FC = () => {
           >
             Contact
           </button>
-
-          <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                navigate(isAuthenticated ? '/admin' : '/login');
-              }}
-              className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5"
-            >
-              <Shield className="w-4 h-4 text-orange-400" />
-              Espace Administrateur
-            </button>
+          <div className="pt-4 border-t border-slate-800">
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
                 setContactModalType('contact');
                 setIsContactModalOpen(true);
               }}
-              className="px-4 py-2 rounded-full bg-orange-500 text-white font-semibold text-xs"
+              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm tracking-wide shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer"
             >
-              Me contacter ↗
+              <span>Me contacter</span>
+              <ArrowUpRight className="w-4 h-4" />
             </button>
           </div>
         </div>

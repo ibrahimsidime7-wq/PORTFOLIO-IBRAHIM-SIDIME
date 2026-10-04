@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Film, Sparkles, MessageSquareCode, Share2, ArrowRight } from 'lucide-react';
 
 export const ServicesSection: React.FC = () => {
-  const { setIsContactModalOpen, setContactModalType, setIsAllServicesModalOpen } = useApp();
+  const { setIsAllServicesModalOpen } = useApp();
 
   const services = [
     {
@@ -58,7 +58,7 @@ export const ServicesSection: React.FC = () => {
         </button>
       </div>
 
-      {/* 4 Cards Grid matching the screenshot */}
+      {/* 4 Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {services.map((service) => {
           const Icon = service.icon;

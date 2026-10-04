@@ -12,18 +12,20 @@ export const AdminLogin: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-
-    setTimeout(() => {
-      const res = login(email, password);
+    try {
+      const res = await login(email, password);
       setIsLoading(false);
       if (!res.success) {
         setError(res.error || 'Identifiants invalides');
       }
-    }, 400);
+    } catch {
+      setIsLoading(false);
+      setError('Erreur lors de la tentative de connexion.');
+    }
   };
 
   return (
@@ -40,29 +42,25 @@ export const AdminLogin: React.FC = () => {
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1 text-orange-500" />
           <span>RETOUR AU PORTFOLIO</span>
         </button>
-
         <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
           <ShieldCheck className="w-3.5 h-3.5 text-orange-500" />
-          <span>Accès Privé & Sécurisé</span>
+          <span>Accès Privé &amp; Sécurisé</span>
         </div>
       </div>
 
       {/* Center Login Card */}
       <div className="max-w-md w-full mx-auto my-auto py-8">
         <div className="bg-[#0b101f] border border-slate-800/90 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-black/80 relative">
-          
-          {/* Top Logo and Identity matching prompt */}
           <div className="flex flex-col items-center text-center mb-8">
-            <Logo size="lg" className="mb-4" />
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide font-syne uppercase mt-2">
-              CONNEXION À L’ADMINISTRATION
+            <Logo size="lg" className="mb-3" />
+            <div className="text-xs font-bold uppercase tracking-widest text-orange-500 mb-1">
+              IBRAHIM SIDIME
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide font-syne uppercase">
+              ESPACE ADMINISTRATEUR
             </h1>
-            <p className="text-slate-400 text-xs mt-1.5">
-              Espace privé réservé exclusivement à Ibrahim Sidime.
-            </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-6 p-3.5 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200 text-xs flex items-center gap-2.5 animate-in fade-in duration-200">
               <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
@@ -70,7 +68,6 @@ export const AdminLogin: React.FC = () => {
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
@@ -100,7 +97,7 @@ export const AdminLogin: React.FC = () => {
                   onClick={() => setShowForgotModal(true)}
                   className="text-xs text-orange-400 hover:text-orange-300 transition-colors cursor-pointer"
                 >
-                  MOT DE PASSE OUBLIÉ ?
+                  MOT DE PASSE OUBLIÉ
                 </button>
               </div>
               <div className="relative">
@@ -110,14 +107,14 @@ export const AdminLogin: React.FC = () => {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="••••••••"
                   className="w-full pl-10 pr-11 py-3 rounded-xl bg-[#070b16] border border-slate-700/80 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-orange-500 transition-colors"
                 />
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-white transition-colors"
+                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
                   aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -140,7 +137,6 @@ export const AdminLogin: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom return link */}
       <div className="max-w-md w-full mx-auto text-center py-4">
         <button
           onClick={() => navigate('/')}
@@ -150,7 +146,6 @@ export const AdminLogin: React.FC = () => {
         </button>
       </div>
 
-      {/* Forgot Password Modal */}
       {showForgotModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-[#0c1224] border border-slate-800 rounded-2xl p-6 max-w-sm w-full text-slate-100 shadow-2xl">

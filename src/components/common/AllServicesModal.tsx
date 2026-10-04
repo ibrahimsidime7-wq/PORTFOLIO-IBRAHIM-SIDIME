@@ -12,7 +12,7 @@ import {
   CheckCircle2, 
   ArrowUpRight, 
   Clock, 
-  Layers
+  Layers 
 } from 'lucide-react';
 
 export const AllServicesModal: React.FC = () => {
@@ -35,7 +35,7 @@ export const AllServicesModal: React.FC = () => {
     {
       id: 'montage-pro',
       title: 'Montage Vidéo Professionnel',
-      category: 'Publicités • Corporate • Clips • Documentaires',
+      category: 'Publicité • Corporate • Clips • Documentaires',
       icon: Film,
       description: 'Montage rythmé et immersif conçu pour captiver votre audience dès la première seconde et maximiser le taux de rétention.',
       points: [
@@ -56,7 +56,7 @@ export const AllServicesModal: React.FC = () => {
         'Animation de logos 2D / 3D percutants',
         'Création de synthés (lower-thirds), intros et outros de marque',
         'Typographies cinétiques et callouts animés',
-        'Intégration d’effets visuels VFX et éléments graphiques stylisés',
+        'Intégration d\'effets visuels VFX et éléments graphiques stylisés',
       ],
       softwares: 'After Effects • Blender • Photoshop',
     },
@@ -65,7 +65,7 @@ export const AllServicesModal: React.FC = () => {
       title: 'Formats Verticaux & Contenus Viraux',
       category: 'TikTok • Instagram Reels • YouTube Shorts',
       icon: Share2,
-      description: 'Formats 9:16 optimisés pour les algorithmes des plateformes sociales afin d’augmenter votre visibilité et votre engagement.',
+      description: 'Formats 9:16 optimisés pour les algorithmes des plateformes sociales afin d\'augmenter votre visibilité et votre engagement.',
       points: [
         'Hooks visuels et sonores percutants dans les 3 premières secondes',
         'Rythme soutenu sans temps mort avec zoom-in / zoom-out dynamiques',
@@ -97,7 +97,7 @@ export const AllServicesModal: React.FC = () => {
       points: [
         'Normalisation LOG / RAW et balance précise des blancs',
         'Harmonisation parfaite des teintes de peau (skin tones)',
-        'Création d’une identité visuelle moody, chaleureuse ou publicitaire',
+        'Création d\'une identité visuelle moody, chaleureuse ou publicitaire',
         'Conformité des niveaux de diffusion broadcast et web',
       ],
       softwares: 'DaVinci Resolve Studio',
@@ -107,7 +107,7 @@ export const AllServicesModal: React.FC = () => {
       title: 'Sound Design & Mixage Audio',
       category: 'SFX • Nettoyage Voix • Musiques Libres de Droits',
       icon: Volume2,
-      description: 'L’audio représente 50% de l’impact émotionnel d’une vidéo. Offrez une expérience sonore puissante et cristalline.',
+      description: 'L\'audio représente 50% de l\'impact émotionnel d\'une vidéo. Offrez une expérience sonore puissante et cristalline.',
       points: [
         'Nettoyage des bruits parasites et mastering des voix off',
         'Bruitages immersifs (whooshes, risers, impacts, ambiances)',
@@ -138,7 +138,6 @@ export const AllServicesModal: React.FC = () => {
               <ArrowLeft className="w-4 h-4 text-orange-400 group-hover:text-white" />
               <span>RETOUR</span>
             </button>
-
             <div>
               <div className="text-[10px] sm:text-xs font-bold text-orange-500 uppercase tracking-widest hidden xs:block">
                 SERVICES & EXPERTISE
@@ -148,7 +147,6 @@ export const AllServicesModal: React.FC = () => {
               </h2>
             </div>
           </div>
-
           <button
             onClick={() => setIsAllServicesModalOpen(false)}
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors cursor-pointer"
@@ -160,7 +158,6 @@ export const AllServicesModal: React.FC = () => {
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 scroll-smooth overscroll-contain">
-          
           {/* Introduction Card */}
           <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent border border-orange-500/20">
             <h3 className="text-sm sm:text-base font-bold text-white font-syne mb-1">
@@ -214,7 +211,6 @@ export const AllServicesModal: React.FC = () => {
                       <Layers className="w-3 h-3 text-orange-400" />
                       <span>{srv.softwares}</span>
                     </div>
-
                     <button
                       onClick={() => handleOpenContact(srv.title)}
                       className="text-xs font-semibold text-orange-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
@@ -234,7 +230,6 @@ export const AllServicesModal: React.FC = () => {
               <Clock className="w-4 h-4" />
               <span>Comment se déroule une collaboration ?</span>
             </h3>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
               <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
                 <div className="font-extrabold text-orange-500 text-sm mb-1">01. Briefing</div>
@@ -255,11 +250,10 @@ export const AllServicesModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Bottom spacing spacer so content is never cut off */}
           <div className="h-4" />
         </div>
 
-        {/* Sticky/Fixed Footer Bar with Retour & Demander un devis */}
+        {/* Sticky/Fixed Footer Bar */}
         <div className="shrink-0 p-4 sm:p-6 border-t border-slate-800 bg-[#090d1b] flex flex-col sm:flex-row items-center justify-between gap-3 z-10 shadow-2xl">
           <button
             onClick={() => setIsAllServicesModalOpen(false)}
@@ -281,7 +275,6 @@ export const AllServicesModal: React.FC = () => {
             <ArrowUpRight className="w-4 h-4" />
           </button>
         </div>
-
       </div>
     </div>
   );

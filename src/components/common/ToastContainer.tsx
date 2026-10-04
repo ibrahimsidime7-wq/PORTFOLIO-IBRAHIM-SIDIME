@@ -29,7 +29,7 @@ export const ToastContainer: React.FC = () => {
               {isError && <AlertCircle className="w-5 h-5 text-red-400" />}
               {!isSuccess && !isError && <Info className="w-5 h-5 text-blue-400" />}
             </div>
-            <div className="flex-1 text-sm font-medium leading-snug">
+            <div className="flex-1 text-sm font-medium leading-snug whitespace-pre-line">
               {toast.message}
             </div>
             <button

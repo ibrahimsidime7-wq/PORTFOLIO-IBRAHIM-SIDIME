@@ -20,7 +20,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
         >
           <Menu className="w-5 h-5" />
         </button>
-
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-white font-syne flex items-center gap-2">
             <span>BONJOUR IBRAHIM</span>
@@ -34,7 +33,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
 
       {/* Right Actions */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Voir le Portfolio */}
         <button
           onClick={() => navigate('/')}
           className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500 hover:text-white text-xs font-semibold transition-all duration-200 cursor-pointer shadow-sm"
@@ -44,18 +42,16 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
           <ExternalLink className="w-3.5 h-3.5" />
         </button>
 
-        {/* Bouton Déconnexion dans le header */}
         <button
           onClick={logout}
           title="Se déconnecter de l'administration"
           className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-red-950/30 border border-red-500/40 text-red-300 hover:bg-red-600 hover:text-white hover:border-red-600 text-xs font-semibold transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
         >
-          <LogOut className="w-3.5 h-3.5 text-red-400 group-hover:text-white" />
+          <LogOut className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">DÉCONNEXION</span>
           <span className="sm:hidden">QUITTER</span>
         </button>
 
-        {/* Avatar */}
         <div className="w-9 h-9 rounded-full border border-orange-500/80 overflow-hidden bg-slate-900 hidden md:block">
           <img
             src={profile.avatarUrl}
@@ -67,4 +63,3 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
     </header>
   );
 };
-

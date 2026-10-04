@@ -62,11 +62,8 @@ export const AdminDashboard: React.FC = () => {
           )}
 
           {activeAdminTab === 'media' && <MediaManager />}
-
           {activeAdminTab === 'messages' && <MessagesManager />}
-
           {activeAdminTab === 'profile' && <ProfileManager />}
-
           {activeAdminTab === 'settings' && <SettingsManager />}
         </main>
       </div>

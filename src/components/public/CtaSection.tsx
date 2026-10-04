@@ -7,18 +7,13 @@ export const CtaSection: React.FC = () => {
 
   return (
     <section id="contact" className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Banner matching the screenshot */}
       <div className="relative rounded-2xl md:rounded-3xl bg-[#080d1a] border border-slate-800/90 p-6 sm:p-8 md:p-10 shadow-2xl overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        
-        {/* Left Vertical Orange Accent Stripe */}
         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-orange-400 via-orange-500 to-amber-500" />
 
-        {/* Content */}
         <div className="flex items-start gap-5 pl-2 sm:pl-3">
           <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-500 border border-orange-500/20 shrink-0 hidden sm:flex">
             <Mail className="w-6 h-6" />
           </div>
-
           <div className="space-y-1">
             <span className="text-xs font-semibold text-slate-400 tracking-wide">
               Un projet en tête ?
@@ -32,8 +27,18 @@ export const CtaSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Action Buttons matching the screenshot */}
         <div className="flex flex-wrap items-center gap-3 pl-2 sm:pl-0 shrink-0">
+          <a
+            href="https://mail.google.com/mail/?view=cm&fs=1&to=ibrahimsidime7@gmail.com&su=Demande%20de%20projet%20vid%C3%A9o"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 px-5 py-3 rounded-full bg-red-950/40 hover:bg-red-900/50 border border-red-500/40 text-red-300 hover:text-white font-semibold text-xs sm:text-sm transition-all duration-200 active:scale-95 cursor-pointer shadow-lg shadow-red-950/30"
+            title="Écrire directement par Gmail à ibrahimsidime7@gmail.com"
+          >
+            <Mail className="w-4 h-4 text-red-400" />
+            <span>Gmail Direct</span>
+          </a>
+
           <button
             onClick={() => {
               setContactModalType('contact');

@@ -8,8 +8,11 @@ export interface Project {
   duration: string;
   thumbnail: string;
   videoUrl?: string;
+  videoFileName?: string;
+  videoFileSize?: string;
   softwares: string[];
   status: 'Publié' | 'Brouillon' | 'Privé';
+  updatedAt?: string;
 }
 
 export interface ClientMessage {
@@ -34,6 +37,7 @@ export interface ProfileData {
   email: string;
   location: string;
   avatarUrl: string;
+  lastUpdated?: string;
   socials: {
     tiktok: string;
     instagram: string;
@@ -50,6 +54,17 @@ export interface PresentationVideo {
   posterUrl: string;
   duration: string;
   fileName?: string;
+  fileSize?: string;
+  format?: string;
+  lastUpdated?: string;
+}
+
+export interface SiteSettings {
+  portfolioTitle: string;
+  portfolioDescription: string;
+  accentColor: string;
+  contactNotificationEmail: boolean;
+  contactNotificationWhatsapp: boolean;
   lastUpdated?: string;
 }
 

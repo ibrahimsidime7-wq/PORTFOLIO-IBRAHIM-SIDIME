@@ -1,13 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig } from 'vite';
+import {defineConfig} from 'vite';
 
-export default defineConfig(({ mode }) => {
-  const isProduction = mode === 'production';
-
+export default defineConfig(() => {
   return {
-    base: isProduction ? '/PORTFOLIO-IBRAHIM-SIDIME/' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

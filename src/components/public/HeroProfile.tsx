@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Play, Mail, Film, Sparkles, Video, ArrowUpRight } from 'lucide-react';
+import { Play, Mail, Film, Sparkles, Video } from 'lucide-react';
 
 export const HeroProfile: React.FC = () => {
   const { profile, setIsContactModalOpen, setContactModalType } = useApp();
@@ -15,14 +15,11 @@ export const HeroProfile: React.FC = () => {
   return (
     <section className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-        
-        {/* Left: Circular Portrait with Orange Border */}
+        {/* Left: Circular Portrait */}
         <div className="lg:col-span-4 flex justify-center lg:justify-start">
           <div className="relative group">
-            {/* Outer subtle glow */}
             <div className="absolute -inset-1.5 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 opacity-40 blur-lg group-hover:opacity-60 transition duration-500" />
             
-            {/* Circular image container with orange border */}
             <div className="relative w-52 h-52 sm:w-60 sm:h-60 md:w-64 md:h-64 rounded-full p-1.5 bg-gradient-to-b from-orange-500 via-orange-600 to-amber-600 shadow-2xl">
               <div className="w-full h-full rounded-full overflow-hidden bg-[#090d19] border-2 border-[#070a12]">
                 <img
@@ -37,31 +34,26 @@ export const HeroProfile: React.FC = () => {
 
         {/* Center: Profile Bio & Direct CTAs */}
         <div className="lg:col-span-5 text-center lg:text-left space-y-4">
-          {/* Tag */}
           <div className="inline-flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest">
             <span>{profile.tagline || 'BIENVENUE SUR MON PORTFOLIO'}</span>
           </div>
 
-          {/* Heading */}
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight font-syne">
             <span>Ibrahim </span>
             <span className="text-orange-500">Sidime</span>
           </h1>
 
-          {/* Subtitle */}
           <p className="text-xs sm:text-sm font-semibold tracking-wider text-slate-300 uppercase">
-            MONTEUR <span className="text-white font-bold">VIDÉO</span> •{' '}
+            MONTEUR <span className="text-white font-bold">VIDÉO</span> &amp;{' '}
             <span className="text-white font-bold">CRÉATEUR DE</span> CONTENU
           </p>
 
-          {/* Bio text */}
           <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-xl mx-auto lg:mx-0">
             {profile.bio}
           </p>
 
-          {/* Social Icons matching the screenshot */}
+          {/* Social Icons */}
           <div className="flex items-center justify-center lg:justify-start gap-4 pt-1 text-slate-400">
-            {/* TikTok */}
             <a
               href={profile.socials.tiktok}
               target="_blank"
@@ -74,7 +66,6 @@ export const HeroProfile: React.FC = () => {
               </svg>
             </a>
 
-            {/* Instagram */}
             <a
               href={profile.socials.instagram}
               target="_blank"
@@ -87,7 +78,6 @@ export const HeroProfile: React.FC = () => {
               </svg>
             </a>
 
-            {/* Facebook */}
             <a
               href={profile.socials.facebook}
               target="_blank"
@@ -100,7 +90,6 @@ export const HeroProfile: React.FC = () => {
               </svg>
             </a>
 
-            {/* YouTube */}
             <a
               href={profile.socials.youtube}
               target="_blank"
@@ -113,7 +102,6 @@ export const HeroProfile: React.FC = () => {
               </svg>
             </a>
 
-            {/* LinkedIn */}
             <a
               href={profile.socials.linkedin}
               target="_blank"
@@ -127,7 +115,7 @@ export const HeroProfile: React.FC = () => {
             </a>
           </div>
 
-          {/* Action Buttons matching the screenshot */}
+          {/* Action Buttons */}
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-3">
             <button
               onClick={scrollToVideo}
@@ -136,7 +124,6 @@ export const HeroProfile: React.FC = () => {
               <Play className="w-4 h-4 fill-white" />
               <span>Voir ma vidéo de présentation</span>
             </button>
-
             <button
               onClick={() => {
                 setContactModalType('contact');
@@ -150,9 +137,8 @@ export const HeroProfile: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: 3 Feature Cards matching the screenshot */}
+        {/* Right: 3 Feature Cards */}
         <div className="lg:col-span-3 space-y-3.5 pt-4 lg:pt-0">
-          {/* Card 1 */}
           <div className="p-4 rounded-2xl bg-[#090e1c] border border-slate-800/80 hover:border-orange-500/40 transition-all duration-300 group shadow-lg shadow-black/20 flex items-start gap-3.5">
             <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 shrink-0 group-hover:scale-110 group-hover:bg-orange-500/20 transition-all">
               <Film className="w-5 h-5" />
@@ -167,7 +153,6 @@ export const HeroProfile: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2 */}
           <div className="p-4 rounded-2xl bg-[#090e1c] border border-slate-800/80 hover:border-orange-500/40 transition-all duration-300 group shadow-lg shadow-black/20 flex items-start gap-3.5">
             <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 shrink-0 group-hover:scale-110 group-hover:bg-orange-500/20 transition-all">
               <Sparkles className="w-5 h-5" />
@@ -177,12 +162,11 @@ export const HeroProfile: React.FC = () => {
                 Motion design
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Animations & effets visuels
+                Animations &amp; effets visuels
               </p>
             </div>
           </div>
 
-          {/* Card 3 */}
           <div className="p-4 rounded-2xl bg-[#090e1c] border border-slate-800/80 hover:border-orange-500/40 transition-all duration-300 group shadow-lg shadow-black/20 flex items-start gap-3.5">
             <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 shrink-0 group-hover:scale-110 group-hover:bg-orange-500/20 transition-all">
               <Video className="w-5 h-5" />
@@ -197,7 +181,6 @@ export const HeroProfile: React.FC = () => {
             </div>
           </div>
         </div>
-
       </div>
     </section>
   );
