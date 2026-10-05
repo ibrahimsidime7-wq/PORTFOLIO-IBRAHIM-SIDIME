@@ -1,21 +1,28 @@
 import express from 'express';
+import dotenv from 'dotenv';
 import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
+dotenv.config();
 
 const app = express();
-const PORT = 3000;
 
-// Body parsing with 100MB limit
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+const PORT = Number(process.env.PORT) || 3000;
+const SUPABASE_BUCKET = 'PORTFOLIO-MEDIA';
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    realtime: { transport: ws as any },
+  }
+);
 
-// Directories
 const ROOT_DIR = process.cwd();
 const DATA_DIR = path.resolve(ROOT_DIR, 'data');
 const UPLOADS_DIR = path.resolve(DATA_DIR, 'uploads');
@@ -23,7 +30,6 @@ const VIDEOS_DIR = path.resolve(UPLOADS_DIR, 'videos');
 const DB_FILE = path.resolve(DATA_DIR, 'database.json');
 const SESSIONS_FILE = path.resolve(DATA_DIR, 'sessions.json');
 const INITIAL_ASSETS_DIR = path.resolve(ROOT_DIR, 'src', 'assets', 'images');
-
 // Ensure directories exist
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -349,6 +355,8 @@ function revokeSession(token: string): void {
 
 // Database Read/Write Functions with Strict Zero-Auto-Seed Rule
 function getDatabase(): DatabaseSchema {
+  console.log('[DATABASE DEBUG] DB_FILE=', DB_FILE);
+  console.log('[DATABASE DEBUG] exists=', fs.existsSync(DB_FILE));
   if (fs.existsSync(DB_FILE)) {
     try {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
@@ -357,155 +365,24 @@ function getDatabase(): DatabaseSchema {
       if (!Array.isArray(data.projects)) {
         data.projects = [];
       }
-// Base de données existante : aucun réensemencement automatique.      return data;
+// Base de données existante : aucun réensemencement automatique.
+      return data;
     } catch (err) {
       console.error('Error reading database file:', err);
       throw err;
     }
   }
 
-  // Only create database if file does NOT exist on disk at all
-  console.log('[PROJECT SEED] Initializing brand new database.json on disk');
-  const initialData: DatabaseSchema = {
-    profile: {
-      name: 'Ibrahim Sidime',
-      title: 'MONTEUR VIDÉO & CRÉATEUR DE CONTENU',
-      tagline: 'BIENVENUE SUR MON PORTFOLIO',
-      bio: 'Je transforme vos idées en vidéos modernes, dynamiques et captivantes avec une précision cinématographique. Passionné par l\'image, le montage et le sound design, je donne vie à vos projets.',
-      aboutFull: 'Je suis Ibrahim Sidime, monteur vidéo et créateur de contenu passionné par l\'image, le montage et la création visuelle.\n\nBasé à Abidjan en Côte d\'Ivoire, mon objectif est de transformer chaque idée en une vidéo claire, dynamique et adaptée à son public. Du spot publicitaire de haute volée aux formats verticaux viraux pour les réseaux sociaux, j\'apporte un soin maniaque au rythme, à la colorimétrie et au sound design.',
-      phone: '07 12 42 16 89',
-      email: 'ibrahimsidime7@gmail.com',
-      location: 'Abidjan, Côte d\'Ivoire',
-      avatarUrl: '/uploads/ibrahim_portrait.jpg',
-      lastUpdated: new Date().toISOString(),
-      socials: {
-        tiktok: 'https://tiktok.com/@ibrahim_sidime',
-        instagram: 'https://instagram.com/ibrahim_sidime',
-        facebook: 'https://facebook.com/ibrahim.sidime',
-        youtube: 'https://youtube.com/@ibrahimsidime',
-        linkedin: 'https://linkedin.com/in/ibrahim-sidime',
-      },
-    },
-    presentationVideo: {
-      title: 'SHOWREEL OFFICIEL 2026',
-      subtitle: 'Découvrez mon univers créatif en 30 secondes.',
-      videoUrl: '/uploads/videos/ibrahim_showreel.mp4',
-      posterUrl: '/uploads/video_studio_poster.jpg',
-      duration: '0:30',
-      fileName: 'ibrahim_showreel_master.mp4',
-      lastUpdated: '2 oct. 2026',
-      fileSize: '496 Ko',
-      format: 'MP4',
-    },
-    projects: [
-      {
-        id: 'proj-1',
-        title: 'Publicité Commerciale Horizon',
-        category: 'Publicité',
-        description: 'Spot publicitaire cinématographique tourné et étalonné pour le lancement d\'une nouvelle marque urbaine. Rendu immersif, sound design soigné.',
-        client: 'Marque Horizon',
-        date: '2026-09-20',
-        duration: '30s',
-        thumbnail: '/uploads/thumb_publicite.jpg',
-        videoUrl: '/uploads/videos/proj_horizon.mp4',
-        softwares: ['Premiere Pro', 'DaVinci Resolve', 'Soundly'],
-        status: 'Publié',
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'proj-2',
-        title: 'Showreel Studio Créatif',
-        category: 'Montage vidéo',
-        description: 'Montage ultra rythmé regroupant les meilleurs plans de production studio. Color grading poussé et découpage précis sur le beat.',
-        client: 'Studio Nova',
-        date: '2026-09-14',
-        duration: '45s',
-        thumbnail: '/uploads/thumb_montage.jpg',
-        videoUrl: '/uploads/videos/proj_studio_nova.mp4',
-        softwares: ['Premiere Pro', 'After Effects'],
-        status: 'Publié',
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'proj-3',
-        title: 'Série Reels & TikTok Impact',
-        category: 'Réseaux sociaux',
-        description: 'Format vertical 9:16 avec hooks percutants dans les 3 premières secondes, sous-titres animés multilingues et effets de zoom dynamiques.',
-        client: 'Créateur & Marque Food',
-        date: '2026-08-30',
-        duration: '15s',
-        thumbnail: '/uploads/thumb_social.jpg',
-        videoUrl: '/uploads/videos/proj_reels_tiktok.mp4',
-        softwares: ['Premiere Pro', 'CapCut Pro'],
-        status: 'Publié',
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'proj-4',
-        title: 'Identité Visuelle & Motion 3D',
-        category: 'Motion design',
-        description: 'Animations graphiques futuristes, typographie cinétique "Ideas Create Impact" et logo reveal en néon 3D pour conférence tech.',
-        client: 'Impact Tech Summit',
-        date: '2026-08-18',
-        duration: '20s',
-        thumbnail: '/uploads/thumb_motion.jpg',
-        videoUrl: '/uploads/videos/proj_motion_3d.mp4',
-        softwares: ['After Effects', 'Blender', 'Illustrator'],
-        status: 'Publié',
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-    messages: [
-      {
-        id: 'msg-1',
-        name: 'Jean Kouassi',
-        email: 'jean.kouassi@creative.ci',
-        phone: '07 08 90 12 34',
-        projectType: 'Montage vidéo',
-        message: 'Bonjour Ibrahim, j\'ai découvert votre portfolio et j\'adore votre style dynamique. Nous avons 5 vidéos d\'interview et 10 formats courts pour TikTok à monter ce mois-ci. Quels sont vos tarifs et disponibilités ?',
-        date: 'Il y a 2 heures',
-        timestamp: Date.now() - 7200000,
-        unread: true,
-      },
-      {
-        id: 'msg-2',
-        name: 'Awa Diop',
-        email: 'awa.diop@brandagency.ci',
-        phone: '05 44 22 11 00',
-        projectType: 'Publicité',
-        message: 'Bonjour M. Sidime, nous préparons le lancement d\'une campagne publicitaire pour une marque panafricaine à Abidjan. Votre profil correspond exactement à notre vision. Pouvons-nous caler un appel téléphonique ?',
-        date: 'Hier à 16:45',
-        timestamp: Date.now() - 86400000,
-        unread: false,
-      },
-    ],
-    settings: {
-      portfolioTitle: 'Ibrahim Sidime - Monteur Vidéo & Espace Admin',
-      portfolioDescription: 'Portfolio professionnel et espace administrateur d\'Ibrahim Sidime, monteur vidéo et créateur de contenu à Abidjan.',
-      accentColor: '#f97316',
-      contactNotificationEmail: true,
-      contactNotificationWhatsapp: true,
-      lastUpdated: new Date().toISOString(),
-    },
-    stats: {
-      totalProjects: 4,
-      publishedVideos: 4,
-      receivedMessages: 2,
-      visitorCount: 1422,
-    },
-    initialized: true,
-    lastUpdated: new Date().toISOString(),
-  };
-  saveDatabase(initialData);
-  return initialData;
+  // Database file missing: never silently recreate/overwrite user data
+  console.error('[DATABASE ERROR] database.json est introuvable:', DB_FILE);
+  throw new Error('DATABASE_FILE_MISSING');
 }
+
 
 function saveDatabase(data: DatabaseSchema): string {
   const timestamp = new Date().toISOString();
   data.lastUpdated = timestamp;
-  const tempFile = `${DB_FILE}.${Date.now()}.tmp`;
-  fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
-  fs.renameSync(tempFile, DB_FILE);
+  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
   return timestamp;
 }
 
@@ -700,130 +577,168 @@ app.delete('/api/presentation-video', requireAdmin, (req: Request, res: Response
     res.status(500).json({ success: false, error: 'Échec de la suppression de la vidéo.' });
   }
 });
-
-// 5. Streaming Video Upload (Up to 500 MB without RAM overload, MP4, WEBM, MOV)
+ // 5. Streaming Video Upload -> Supabase Storage
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB
-app.post('/api/upload-video', requireAdmin, (req: Request, res: Response) => {
+
+app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) => {
+  let tempPath = '';
+
   try {
     const rawFileName = req.headers['x-file-name']
       ? decodeURIComponent(req.headers['x-file-name'] as string)
       : 'video.mp4';
-    const declaredSize = parseInt((req.headers['x-file-size'] as string) || '0', 10);
-    const declaredType = ((req.headers['x-file-type'] as string) || '').toLowerCase();
 
+    const declaredSize = parseInt(
+      (req.headers['x-file-size'] as string) || '0',
+      10
+    );
+
+    const declaredType = (
+      (req.headers['x-file-type'] as string) || ''
+    ).toLowerCase();
+
+    // Vérification de la taille annoncée
     if (declaredSize > MAX_VIDEO_BYTES) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         error: 'Vidéo trop volumineuse. Taille maximale : 500 Mo.',
       });
-      return;
     }
 
+    // Vérification du format
     const extMatch = rawFileName.match(/\.([a-zA-Z0-9]+)$/);
     let ext = extMatch ? extMatch[1].toLowerCase() : '';
+
     if (!ext) {
-      if (declaredType.includes('webm')) ext = 'webm';
-      else if (declaredType.includes('quicktime') || declaredType.includes('mov')) ext = 'mov';
-      else ext = 'mp4';
+      if (declaredType.includes('webm')) {
+        ext = 'webm';
+      } else if (
+        declaredType.includes('quicktime') ||
+        declaredType.includes('mov')
+      ) {
+        ext = 'mov';
+      } else {
+        ext = 'mp4';
+      }
     }
 
     const allowedFormats = ['mp4', 'webm', 'mov'];
+
     if (!allowedFormats.includes(ext)) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
-        error: 'Format non pris en charge. Utilisez MP4, WEBM ou MOV.',
+        error: 'Format vidéo non supporté. Utilisez MP4, WEBM ou MOV.',
       });
-      return;
     }
 
-    const safeBaseName = path.basename(rawFileName, path.extname(rawFileName)).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeBaseName =
+      path
+        .basename(rawFileName, path.extname(rawFileName))
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .slice(0, 80) || 'video';
+
     const uniqueFileName = `video_${Date.now()}_${safeBaseName}.${ext}`;
-    const destinationPath = path.join(VIDEOS_DIR, uniqueFileName);
-    const tempPath = path.join(VIDEOS_DIR, `temp_${Date.now()}_${uniqueFileName}`);
-    const fileStream = fs.createWriteStream(tempPath);
 
-    let bytesReceived = 0;
-    let isAborted = false;
+    // Fichier temporaire local
+    tempPath = path.join(
+      VIDEOS_DIR,
+      `temp_${Date.now()}_${uniqueFileName}`
+    );
 
-    req.socket.setTimeout(20 * 60 * 1000);
+    await fs.promises.mkdir(VIDEOS_DIR, { recursive: true });
 
-    req.on('data', (chunk: Buffer) => {
-      if (isAborted) return;
-      bytesReceived += chunk.length;
-      if (bytesReceived > MAX_VIDEO_BYTES) {
-        isAborted = true;
-        fileStream.destroy();
-        fs.unlink(tempPath, () => {});
-        res.status(400).json({
-          success: false,
-          error: 'Vidéo trop volumineuse. Taille maximale : 500 Mo.',
-        });
-      }
-    });
+    // Réception de la vidéo sur le serveur
+    await new Promise<void>((resolve, reject) => {
+      const fileStream = fs.createWriteStream(tempPath);
+      let receivedBytes = 0;
 
-    req.pipe(fileStream);
+      req.on('data', (chunk: Buffer) => {
+        receivedBytes += chunk.length;
 
-    fileStream.on('error', (err) => {
-      console.error('Video stream write error:', err);
-      if (!res.headersSent) {
-        fs.unlink(tempPath, () => {});
-        res.status(500).json({
-          success: false,
-          error: 'Échec du téléchargement. Veuillez réessayer.',
-        });
-      }
-    });
-
-    fileStream.on('finish', () => {
-      if (isAborted) return;
-      try {
-        fs.renameSync(tempPath, destinationPath);
-        const stats = fs.statSync(destinationPath);
-        const actualSizeBytes = stats.size;
-        const sizeInMb = (actualSizeBytes / (1024 * 1024)).toFixed(1);
-        const formattedSize = `${sizeInMb} Mo`;
-        const formatLabel = ext.toUpperCase();
-        const publicUrl = `/uploads/videos/${uniqueFileName}`;
-
-        console.log(`[VIDEO UPLOAD] Successfully stored ${publicUrl} (${formattedSize})`);
-
-        res.json({
-          success: true,
-          url: publicUrl,
-          fileName: rawFileName,
-          fileSize: formattedSize,
-          format: formatLabel,
-          sizeBytes: actualSizeBytes,
-          message: 'Vidéo téléversée avec succès et stockée de manière permanente.',
-        });
-      } catch (err: any) {
-        console.error('Finalize video error:', err);
-        if (!res.headersSent) {
-          res.status(500).json({
-            success: false,
-            error: 'Échec du traitement de la vidéo. Veuillez réessayer.',
-          });
+        if (receivedBytes > MAX_VIDEO_BYTES) {
+          req.destroy(new Error('VIDEO_TOO_LARGE'));
+          return;
         }
-      }
+      });
+
+      req.on('error', reject);
+      fileStream.on('error', reject);
+      fileStream.on('finish', resolve);
+
+      req.pipe(fileStream);
+    });
+
+    const stats = await fs.promises.stat(tempPath);
+
+    if (stats.size > MAX_VIDEO_BYTES) {
+      throw new Error('VIDEO_TOO_LARGE');
+    }
+
+    // Lecture du fichier temporaire
+    const videoBuffer = await fs.promises.readFile(tempPath);
+
+    // Nom du fichier dans Supabase Storage
+    const storagePath = `videos/${uniqueFileName}`;
+
+    // Envoi vers Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from(SUPABASE_BUCKET)
+      .upload(storagePath, videoBuffer, {
+        contentType: declaredType || `video/${ext === 'mov' ? 'quicktime' : ext}`,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('[SUPABASE VIDEO UPLOAD ERROR]', uploadError);
+      throw uploadError;
+    }
+
+    // URL publique de la vidéo
+    const { data: publicUrlData } = supabase.storage
+      .from(SUPABASE_BUCKET)
+      .getPublicUrl(storagePath);
+
+    const publicUrl = publicUrlData.publicUrl;
+
+    console.log('[SUPABASE VIDEO UPLOAD] Réussi:', publicUrl);
+
+    // Suppression du fichier temporaire local
+    await fs.promises.unlink(tempPath).catch(() => {});
+
+    tempPath = '';
+
+    return res.json({
+      success: true,
+      url: publicUrl,
+      fileName: uniqueFileName,
+      originalName: rawFileName,
+      fileSize: stats.size,
+      format: ext.toUpperCase(),
+      storage: 'supabase',
     });
   } catch (err: any) {
-    console.error('Upload video route error:', err);
-    if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        error: 'Échec du téléchargement. Veuillez réessayer.',
-      });
+    console.error('[VIDEO UPLOAD ERROR]', err);
+
+    if (tempPath) {
+      await fs.promises.unlink(tempPath).catch(() => {});
     }
+
+    const message =
+      err?.message === 'VIDEO_TOO_LARGE'
+        ? 'Vidéo trop volumineuse. Taille maximale : 500 Mo.'
+        : 'Échec du téléchargement de la vidéo. Veuillez réessayer.';
+
+    return res.status(500).json({
+      success: false,
+      error: message,
+    });
   }
 });
-
-// 6. Verify Video Existence Endpoint (Bug B diagnostic)
-app.get('/api/videos/verify', (req: Request, res: Response) => {
-  const videoUrl = String(req.query.url || '');
-  console.log(`[VIDEO LOAD] check requested: url = ${videoUrl}`);
-
+// 6. Video availability check
+app.get('/api/check-video', (req: Request, res: Response) => {
+  const videoUrl = typeof req.query.url === 'string' ? req.query.url : '';
   if (!videoUrl) {
-    res.json({ exists: false, reason: 'URL manquante' });
+    res.status(400).json({ exists: false, reason: 'URL vidéo manquante' });
     return;
   }
 
@@ -1203,13 +1118,17 @@ app.post('/api/stats/visit', (req: Request, res: Response) => {
 // 12. Manual Reset Endpoint (Admin only)
 app.post('/api/admin/reset-baseline', requireAdmin, (req: Request, res: Response) => {
   try {
-    if (fs.existsSync(DB_FILE)) {
-      fs.unlinkSync(DB_FILE);
-    }
     const freshDb = getDatabase();
-    res.json({ success: true, database: freshDb, message: 'Base de données réinitialisée aux valeurs officielles.' });
+    res.json({
+      success: true,
+      database: freshDb,
+      message: 'Base de données actuelle conservée.'
+    });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: 'Erreur lors de la réinitialisation' });
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la lecture de la base de données'
+    });
   }
 });
 
@@ -1224,10 +1143,16 @@ async function startServer() {
 
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
+    
     const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
+  server: {
+    middlewareMode: true,
+    watch: {
+      ignored: ['**/data/**'],
+    },
+  },
+  appType: 'spa',
+});
     app.use(vite.middlewares);
   } else {
     app.use(express.static(path.join(__dirname, 'dist')));
