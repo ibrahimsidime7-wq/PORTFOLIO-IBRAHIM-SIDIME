@@ -199,8 +199,8 @@ interface DatabaseSchema {
 }
 
 // Credentials
-const ADMIN_EMAIL = 'ibrahimsidime7@gmail.com';
-const ADMIN_PASS = 'Khalil09';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ibrahimsidime7@gmail.com';
+const ADMIN_PASS = process.env.ADMIN_PASSWORD || '';
 
 // Persistent Sessions
 interface SessionRecord {
@@ -354,35 +354,78 @@ function revokeSession(token: string): void {
 }
 
 // Database Read/Write Functions with Strict Zero-Auto-Seed Rule
+// Supabase is the source of truth in production. Cache keeps existing synchronous routes compatible.
+let databaseCache: DatabaseSchema | null = null;
+let persistenceQueue: Promise<void> = Promise.resolve();
+
 function getDatabase(): DatabaseSchema {
-  console.log('[DATABASE DEBUG] DB_FILE=', DB_FILE);
-  console.log('[DATABASE DEBUG] exists=', fs.existsSync(DB_FILE));
-  if (fs.existsSync(DB_FILE)) {
-    try {
-      const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      const data: DatabaseSchema = JSON.parse(raw);
-      // Guarantee projects is an array (even if empty, which is 100% valid)
-      if (!Array.isArray(data.projects)) {
-        data.projects = [];
-      }
-// Base de données existante : aucun réensemencement automatique.
-      return data;
-    } catch (err) {
-      console.error('Error reading database file:', err);
-      throw err;
+  if (databaseCache) return databaseCache;
+  // Local file is only a development fallback. Production initialization loads Supabase first.
+  if (process.env.NODE_ENV !== 'production' && fs.existsSync(DB_FILE)) {
+    const data: DatabaseSchema = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    if (!Array.isArray(data.projects)) data.projects = [];
+    databaseCache = data;
+    return databaseCache;
+  }
+  throw new Error('DATABASE_NOT_INITIALIZED');
+}
+
+async function initializeDatabase(): Promise<DatabaseSchema> {
+  if (process.env.NODE_ENV !== 'production') {
+    if (fs.existsSync(DB_FILE)) {
+      const localData: DatabaseSchema = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+      if (!Array.isArray(localData.projects)) localData.projects = [];
+      databaseCache = localData;
+      return localData;
     }
   }
 
-  // Database file missing: never silently recreate/overwrite user data
-  console.error('[DATABASE ERROR] database.json est introuvable:', DB_FILE);
-  throw new Error('DATABASE_FILE_MISSING');
-}
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_ENV_MISSING');
+  }
 
+  const { data, error } = await supabase
+    .from('portfolio_state')
+    .select('id,data,updated_at')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error) throw new Error(`SUPABASE_READ_FAILED: ${error.message}`);
+  if (!data || !data.data || typeof data.data !== 'object' || Array.isArray(data.data)) {
+    throw new Error('SUPABASE_STATE_ROW_MISSING_OR_INVALID; refusing to seed or overwrite data');
+  }
+
+  const db = data.data as DatabaseSchema;
+  if (!Array.isArray(db.projects) || !Array.isArray(db.messages) || !db.profile || !db.presentationVideo || !db.settings || !db.stats) {
+    throw new Error('SUPABASE_STATE_SCHEMA_INVALID; refusing to overwrite data');
+  }
+  if (data.updated_at && !db.lastUpdated) db.lastUpdated = data.updated_at;
+  databaseCache = db;
+  console.log(`[Supabase] Loaded existing state: ${db.projects.length} projects, ${db.messages.length} messages.`);
+  return db;
+}
 
 function saveDatabase(data: DatabaseSchema): string {
   const timestamp = new Date().toISOString();
   data.lastUpdated = timestamp;
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  databaseCache = data;
+  const snapshot = JSON.parse(JSON.stringify(data)) as DatabaseSchema;
+
+  // Serialize writes so requests persist in order.
+  persistenceQueue = persistenceQueue.then(async () => {
+    const { error } = await supabase
+      .from('portfolio_state')
+      .upsert({ id: 1, data: snapshot, updated_at: timestamp }, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
+  }).catch((err) => {
+    console.error('[Supabase] Persistent state write failed:', err);
+  });
+
+  // Local backup is development-only; production persistence is Supabase.
+  if (process.env.NODE_ENV !== 'production') {
+    try { fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8'); }
+    catch (err) { console.warn('[Database] Local development backup failed:', err); }
+  }
   return timestamp;
 }
 
@@ -1138,7 +1181,8 @@ app.post('/api/admin/reset-baseline', requireAdmin, (req: Request, res: Response
 
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
-  const db = getDatabase();
+  if (!process.env.ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD environment variable is required');
+  const db = await initializeDatabase();
   console.log(`[Database] Loaded ${db.projects.length} projects, ${db.messages.length} messages. Last updated: ${db.lastUpdated}`);
 
   if (!isProd) {
