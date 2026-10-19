@@ -325,7 +325,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (res.status === 401) {
       const refreshed = await refreshSession();
       if (refreshed) {
-        const freshToken = localStorage.getItem('ibrahim_admin_token') || 'ibrahim-persistent-admin-token';
+        const freshToken = localStorage.getItem('ibrahim_admin_token') || '';
         headers.set('Authorization', `Bearer ${freshToken}`);
         res = await fetch(input, { ...init, headers });
       } else {
@@ -360,20 +360,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: data.error || 'Identifiants invalides' };
       }
     } catch {
-      // Fallback offline verification if server is temporarily reloading
-      if (email.trim().toLowerCase() === 'ibrahimsidime7@gmail.com' && pass.trim() === 'Khalil09') {
-        const fallbackToken = 'ibrahim-persistent-admin-token';
-        const fallbackRefresh = 'ibrahim-persistent-admin-refresh';
-        setAdminToken(fallbackToken);
-        setRefreshToken(fallbackRefresh);
-        localStorage.setItem('ibrahim_admin_token', fallbackToken);
-        localStorage.setItem('ibrahim_admin_refresh_token', fallbackRefresh);
-        localStorage.setItem('ibrahim_admin_auth', 'true');
-        setAuthStatus('authenticated');
-        showToast('Connexion réussie ! Bienvenue Ibrahim.', 'success');
-        navigate('/admin');
-        return { success: true };
-      }
       return { success: false, error: 'Serveur injoignable. Veuillez réessayer.' };
     }
   };
@@ -444,7 +430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/upload-video', true);
-      const token = adminToken || localStorage.getItem('ibrahim_admin_token') || 'ibrahim-persistent-admin-token';
+      const token = adminToken || localStorage.getItem('ibrahim_admin_token') || '';
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.setRequestHeader('Content-Type', 'application/octet-stream');
       xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
