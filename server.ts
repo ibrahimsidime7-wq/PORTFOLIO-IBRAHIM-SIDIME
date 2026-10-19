@@ -841,7 +841,7 @@ app.post('/api/upload', requireAdmin, async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: 'Données de fichier requises sous format data-uri' });
       return;
     }
-    const matches = fileData.match(/^data:([A-Za-z0-9.+-]+\\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
+    const matches = fileData.match(/^data:([A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
     if (!matches) {
       res.status(400).json({ success: false, error: 'Format base64 invalide' });
       return;
