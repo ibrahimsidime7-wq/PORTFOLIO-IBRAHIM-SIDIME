@@ -15,13 +15,24 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 const PORT = Number(process.env.PORT) || 3000;
 const SUPABASE_BUCKET = 'PORTFOLIO-MEDIA';
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    realtime: { transport: ws as any },
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseClient() {
+  const url = process.env.SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('SUPABASE_ENV_MISSING');
   }
-);
+
+  if (!supabaseClient) {
+    supabaseClient = createClient(url, serviceRoleKey, {
+      realtime: { transport: ws as any },
+    });
+  }
+
+  return supabaseClient;
+}
 
 const ROOT_DIR = process.cwd();
 const DATA_DIR = path.resolve(ROOT_DIR, 'data');
@@ -366,7 +377,7 @@ async function initializeDatabase(): Promise<DatabaseSchema> {
     throw new Error('SUPABASE_ENV_MISSING');
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('portfolio_state')
     .select('id,data,updated_at')
     .eq('id', 1)
@@ -394,7 +405,7 @@ async function saveDatabase(data: DatabaseSchema): Promise<string> {
   const snapshot = JSON.parse(JSON.stringify(data)) as DatabaseSchema;
 
   const write = persistenceQueue.catch(() => undefined).then(async () => {
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from('portfolio_state')
       .upsert({ id: 1, data: snapshot, updated_at: timestamp }, { onConflict: 'id' });
     if (error) throw new Error(error.message);
@@ -704,7 +715,7 @@ app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) 
     const storagePath = `videos/${uniqueFileName}`;
 
     // Envoi vers Supabase Storage
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await getSupabaseClient().storage
       .from(SUPABASE_BUCKET)
       .upload(storagePath, videoBuffer, {
         contentType: declaredType || `video/${ext === 'mov' ? 'quicktime' : ext}`,
@@ -717,7 +728,7 @@ app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) 
     }
 
     // URL publique de la vidéo
-    const { data: publicUrlData } = supabase.storage
+    const { data: publicUrlData } = getSupabaseClient().storage
       .from(SUPABASE_BUCKET)
       .getPublicUrl(storagePath);
 
