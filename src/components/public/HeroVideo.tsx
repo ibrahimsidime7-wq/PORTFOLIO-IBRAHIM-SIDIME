@@ -92,6 +92,7 @@ export const HeroVideo: React.FC = () => {
             </div>
           ) : presentationVideo.videoUrl ? (
             <video
+              key={presentationVideo.videoUrl}
               ref={videoRef}
               src={presentationVideo.videoUrl}
               poster={presentationVideo.posterUrl}
