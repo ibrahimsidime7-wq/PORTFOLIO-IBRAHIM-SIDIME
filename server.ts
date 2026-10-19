@@ -893,7 +893,7 @@ app.get('/api/projects/:id', async (req: Request, res: Response) => {
 });
 
 // CREATE project
-app.post('/api/projects', requireAdmin, (req: Request, res: Response) => {
+app.post('/api/projects', requireAdmin, async (req: Request, res: Response) => {
   try {
     const projectData = req.body;
     const db = getDatabase();
