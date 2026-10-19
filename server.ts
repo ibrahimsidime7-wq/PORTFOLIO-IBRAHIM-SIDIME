@@ -401,8 +401,8 @@ async function initializeDatabase(): Promise<DatabaseSchema> {
 async function saveDatabase(data: DatabaseSchema): Promise<string> {
   const timestamp = new Date().toISOString();
   data.lastUpdated = timestamp;
-  databaseCache = data;
   const snapshot = JSON.parse(JSON.stringify(data)) as DatabaseSchema;
+  const previousCache = databaseCache;
 
   const write = persistenceQueue.catch(() => undefined).then(async () => {
     const { error } = await getSupabaseClient()
@@ -411,7 +411,16 @@ async function saveDatabase(data: DatabaseSchema): Promise<string> {
     if (error) throw new Error(error.message);
   });
   persistenceQueue = write;
-  await write;
+
+  try {
+    await write;
+    // Publish the new in-memory state only after Supabase confirms persistence.
+    databaseCache = data;
+  } catch (error) {
+    // Do not leave the server serving an unpersisted change as if it were saved.
+    databaseCache = previousCache;
+    throw error;
+  }
 
   if (process.env.NODE_ENV !== 'production') {
     try { fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8'); }
