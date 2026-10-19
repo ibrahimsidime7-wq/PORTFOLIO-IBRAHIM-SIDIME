@@ -405,23 +405,21 @@ async function initializeDatabase(): Promise<DatabaseSchema> {
   return db;
 }
 
-function saveDatabase(data: DatabaseSchema): string {
+async function saveDatabase(data: DatabaseSchema): Promise<string> {
   const timestamp = new Date().toISOString();
   data.lastUpdated = timestamp;
   databaseCache = data;
   const snapshot = JSON.parse(JSON.stringify(data)) as DatabaseSchema;
 
-  // Serialize writes so requests persist in order.
-  persistenceQueue = persistenceQueue.then(async () => {
+  const write = persistenceQueue.catch(() => undefined).then(async () => {
     const { error } = await supabase
       .from('portfolio_state')
       .upsert({ id: 1, data: snapshot, updated_at: timestamp }, { onConflict: 'id' });
     if (error) throw new Error(error.message);
-  }).catch((err) => {
-    console.error('[Supabase] Persistent state write failed:', err);
   });
+  persistenceQueue = write;
+  await write;
 
-  // Local backup is development-only; production persistence is Supabase.
   if (process.env.NODE_ENV !== 'production') {
     try { fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8'); }
     catch (err) { console.warn('[Database] Local development backup failed:', err); }
@@ -545,7 +543,7 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
 });
 
 // 3. Profile API
-app.put('/api/profile', requireAdmin, (req: Request, res: Response) => {
+app.put('/api/profile', requireAdmin, async (req: Request, res: Response) => {
   try {
     const updates = req.body;
     const db = getDatabase();
@@ -554,7 +552,7 @@ app.put('/api/profile', requireAdmin, (req: Request, res: Response) => {
       ...updates,
       lastUpdated: new Date().toISOString(),
     };
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       profile: db.profile,
@@ -568,7 +566,7 @@ app.put('/api/profile', requireAdmin, (req: Request, res: Response) => {
 });
 
 // 4. Presentation Video API
-app.put('/api/presentation-video', requireAdmin, (req: Request, res: Response) => {
+app.put('/api/presentation-video', requireAdmin, async (req: Request, res: Response) => {
   try {
     const updates = req.body;
     const db = getDatabase();
@@ -577,7 +575,7 @@ app.put('/api/presentation-video', requireAdmin, (req: Request, res: Response) =
       ...updates,
       lastUpdated: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     };
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       presentationVideo: db.presentationVideo,
@@ -590,7 +588,7 @@ app.put('/api/presentation-video', requireAdmin, (req: Request, res: Response) =
   }
 });
 
-app.delete('/api/presentation-video', requireAdmin, (req: Request, res: Response) => {
+app.delete('/api/presentation-video', requireAdmin, async (req: Request, res: Response) => {
   try {
     const db = getDatabase();
     // If local video file exists and not used elsewhere, delete it
@@ -608,7 +606,7 @@ app.delete('/api/presentation-video', requireAdmin, (req: Request, res: Response
       format: '',
       lastUpdated: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     };
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       presentationVideo: db.presentationVideo,
@@ -883,7 +881,7 @@ app.post('/api/upload', requireAdmin, (req: Request, res: Response) => {
 
 // 8. Projects CRUD Endpoints
 // GET single project
-app.get('/api/projects/:id', (req: Request, res: Response) => {
+app.get('/api/projects/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   const db = getDatabase();
   const project = db.projects.find(p => p.id === id);
@@ -907,7 +905,7 @@ app.post('/api/projects', requireAdmin, (req: Request, res: Response) => {
     db.projects.unshift(newProject);
     db.stats.totalProjects = db.projects.length;
     db.stats.publishedVideos = db.projects.filter(p => p.status === 'Publié').length;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
 
     console.log(`[PROJECT CREATE] Created project ${newProject.id}: "${newProject.title}". Total: ${db.projects.length}`);
 
@@ -924,7 +922,7 @@ app.post('/api/projects', requireAdmin, (req: Request, res: Response) => {
 });
 
 // UPDATE project
-app.put('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
+app.put('/api/projects/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -960,7 +958,7 @@ app.put('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
       updatedAt: new Date().toISOString(),
     };
     db.stats.publishedVideos = db.projects.filter(p => p.status === 'Publié').length;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
 
     console.log(`[PROJECT UPDATE] Updated project ${id}: "${db.projects[index].title}"`);
 
@@ -977,7 +975,7 @@ app.put('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
 });
 
 // DELETE project (Permanent and definitive - Bug A)
-app.delete('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
+app.delete('/api/projects/:id', requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
   console.log(`[PROJECT DELETE] projectId = ${id}`);
   console.log(`[PROJECT DELETE] API request sent`);
@@ -1016,7 +1014,7 @@ app.delete('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
     db.stats.totalProjects = db.projects.length;
     db.stats.publishedVideos = db.projects.filter(p => p.status === 'Publié').length;
 
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     console.log(`[PROJECT DELETE] database deletion = success (Remaining projects: ${db.projects.length})`);
     console.log(`[PROJECT DELETE] API response = success`);
 
@@ -1035,7 +1033,7 @@ app.delete('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
 });
 
 // Toggle Project Publish Status
-app.patch('/api/projects/:id/publish', requireAdmin, (req: Request, res: Response) => {
+app.patch('/api/projects/:id/publish', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const db = getDatabase();
@@ -1047,7 +1045,7 @@ app.patch('/api/projects/:id/publish', requireAdmin, (req: Request, res: Respons
     project.status = project.status === 'Publié' ? 'Brouillon' : 'Publié';
     project.updatedAt = new Date().toISOString();
     db.stats.publishedVideos = db.projects.filter(p => p.status === 'Publié').length;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       project,
@@ -1061,7 +1059,7 @@ app.patch('/api/projects/:id/publish', requireAdmin, (req: Request, res: Respons
 });
 
 // 9. Messages API
-app.post('/api/messages', (req: Request, res: Response) => {
+app.post('/api/messages', async (req: Request, res: Response) => {
   try {
     const { name, email, phone, projectType, message } = req.body;
     if (!name || !message) {
@@ -1082,7 +1080,7 @@ app.post('/api/messages', (req: Request, res: Response) => {
     };
     db.messages.unshift(newMessage);
     db.stats.receivedMessages = db.messages.length;
-    saveDatabase(db);
+    await saveDatabase(db);
     res.json({
       success: true,
       message: newMessage,
@@ -1094,7 +1092,7 @@ app.post('/api/messages', (req: Request, res: Response) => {
   }
 });
 
-app.patch('/api/messages/:id/read', requireAdmin, (req: Request, res: Response) => {
+app.patch('/api/messages/:id/read', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const db = getDatabase();
@@ -1104,20 +1102,20 @@ app.patch('/api/messages/:id/read', requireAdmin, (req: Request, res: Response) 
       return;
     }
     msg.unread = !msg.unread;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({ success: true, message: msg, lastUpdated });
   } catch (err: any) {
     res.status(500).json({ success: false, error: 'Erreur lors du marquage du message.' });
   }
 });
 
-app.delete('/api/messages/:id', requireAdmin, (req: Request, res: Response) => {
+app.delete('/api/messages/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const db = getDatabase();
     db.messages = db.messages.filter(m => m.id !== id);
     db.stats.receivedMessages = db.messages.length;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({ success: true, id, lastUpdated });
   } catch (err: any) {
     res.status(500).json({ success: false, error: 'Erreur lors de la suppression du message.' });
@@ -1125,7 +1123,7 @@ app.delete('/api/messages/:id', requireAdmin, (req: Request, res: Response) => {
 });
 
 // 10. Settings API
-app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
+app.put('/api/settings', requireAdmin, async (req: Request, res: Response) => {
   try {
     const updates = req.body;
     const db = getDatabase();
@@ -1134,7 +1132,7 @@ app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
       ...updates,
       lastUpdated: new Date().toISOString(),
     };
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       settings: db.settings,
@@ -1147,11 +1145,11 @@ app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
 });
 
 // 11. Stats Visit Counter
-app.post('/api/stats/visit', (req: Request, res: Response) => {
+app.post('/api/stats/visit', async (req: Request, res: Response) => {
   try {
     const db = getDatabase();
     db.stats.visitorCount = (db.stats.visitorCount || 1420) + 1;
-    saveDatabase(db);
+    await saveDatabase(db);
     res.json({ success: true, visitorCount: db.stats.visitorCount });
   } catch (err: any) {
     res.json({ success: false });
