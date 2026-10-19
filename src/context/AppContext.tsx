@@ -131,10 +131,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Auth State
   const [adminToken, setAdminToken] = useState<string | null>(() => {
-    return localStorage.getItem('ibrahim_admin_token') || (localStorage.getItem('ibrahim_admin_auth') === 'true' ? 'ibrahim-persistent-admin-token' : null);
+    return localStorage.getItem('ibrahim_admin_token') || null;
   });
   const [refreshToken, setRefreshToken] = useState<string | null>(() => {
-    return localStorage.getItem('ibrahim_admin_refresh_token') || (localStorage.getItem('ibrahim_admin_auth') === 'true' ? 'ibrahim-persistent-admin-refresh' : null);
+    return localStorage.getItem('ibrahim_admin_refresh_token') || null;
   });
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>(() => {
     const hasCreds = Boolean(
@@ -246,7 +246,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Session Token Refresh
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    const refToken = refreshToken || localStorage.getItem('ibrahim_admin_refresh_token') || 'ibrahim-persistent-admin-refresh';
+    const refToken = refreshToken || localStorage.getItem('ibrahim_admin_refresh_token');
+    if (!refToken) return false;
     try {
       const res = await fetch('/api/auth/refresh', {
         method: 'POST',
@@ -315,7 +316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Authenticated fetch with automatic recovery
   const authenticatedFetch = useCallback(async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
-    let token = adminToken || localStorage.getItem('ibrahim_admin_token') || 'ibrahim-persistent-admin-token';
+    let token = adminToken || localStorage.getItem('ibrahim_admin_token') || '';
     const headers = new Headers(init.headers || {});
     if (!headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${token}`);
