@@ -458,7 +458,12 @@ app.get('/api/bootstrap', (req: Request, res: Response) => {
       profile: db.profile,
       presentationVideo: db.presentationVideo,
       projects: Array.isArray(db.projects) ? db.projects : [],
-      messages: db.messages,
+      // Private contact messages are exposed only to a valid administrator session.
+      messages: (() => {
+        const authorization = req.headers.authorization;
+        const token = authorization?.startsWith('Bearer ') ? authorization.split(' ')[1] : '';
+        return token && validateToken(token).valid ? db.messages : [];
+      })(),
       settings: db.settings,
       stats: {
         ...db.stats,
