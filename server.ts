@@ -15,13 +15,24 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 const PORT = Number(process.env.PORT) || 3000;
 const SUPABASE_BUCKET = 'PORTFOLIO-MEDIA';
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    realtime: { transport: ws as any },
+let supabaseClient: any = null;
+
+function getSupabaseClient(): any {
+  const url = process.env.SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('SUPABASE_ENV_MISSING');
   }
-);
+
+  if (!supabaseClient) {
+    supabaseClient = createClient(url, serviceRoleKey, {
+      realtime: { transport: ws as any },
+    });
+  }
+
+  return supabaseClient;
+}
 
 const ROOT_DIR = process.cwd();
 const DATA_DIR = path.resolve(ROOT_DIR, 'data');
@@ -199,8 +210,8 @@ interface DatabaseSchema {
 }
 
 // Credentials
-const ADMIN_EMAIL = 'ibrahimsidime7@gmail.com';
-const ADMIN_PASS = 'Khalil09';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ibrahimsidime7@gmail.com';
+const ADMIN_PASS = process.env.ADMIN_PASSWORD || '';
 
 // Persistent Sessions
 interface SessionRecord {
@@ -267,20 +278,6 @@ function createSession(email: string): { token: string; refreshToken: string; ex
 }
 
 function validateToken(token: string): { valid: boolean; expired?: boolean; session?: SessionRecord } {
-  if (token === 'ibrahim-persistent-admin-token') {
-    return {
-      valid: true,
-      session: {
-        token,
-        refreshToken: 'ibrahim-persistent-admin-refresh',
-        email: ADMIN_EMAIL,
-        createdAt: 0,
-        expiresAt: Date.now() + ACCESS_TOKEN_TTL,
-        refreshExpiresAt: Date.now() + REFRESH_TOKEN_TTL,
-        lastActive: Date.now(),
-      },
-    };
-  }
   const session = ACTIVE_SESSIONS.get(token);
   if (!session) {
     return { valid: false, expired: false };
@@ -299,10 +296,6 @@ function validateToken(token: string): { valid: boolean; expired?: boolean; sess
 }
 
 function refreshSessionToken(providedRefreshToken: string): { success: boolean; token?: string; refreshToken?: string; expiresAt?: number; error?: string } {
-  if (providedRefreshToken === 'ibrahim-persistent-admin-refresh' || providedRefreshToken === 'ibrahim-persistent-admin-token') {
-    const fresh = createSession(ADMIN_EMAIL);
-    return { success: true, ...fresh };
-  }
   const now = Date.now();
   let foundSession: SessionRecord | null = null;
   let oldToken: string | null = null;
@@ -354,35 +347,76 @@ function revokeSession(token: string): void {
 }
 
 // Database Read/Write Functions with Strict Zero-Auto-Seed Rule
+// Supabase is the source of truth in production. Cache keeps existing synchronous routes compatible.
+let databaseCache: DatabaseSchema | null = null;
+let persistenceQueue: Promise<void> = Promise.resolve();
+
 function getDatabase(): DatabaseSchema {
-  console.log('[DATABASE DEBUG] DB_FILE=', DB_FILE);
-  console.log('[DATABASE DEBUG] exists=', fs.existsSync(DB_FILE));
-  if (fs.existsSync(DB_FILE)) {
-    try {
-      const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      const data: DatabaseSchema = JSON.parse(raw);
-      // Guarantee projects is an array (even if empty, which is 100% valid)
-      if (!Array.isArray(data.projects)) {
-        data.projects = [];
-      }
-// Base de données existante : aucun réensemencement automatique.
-      return data;
-    } catch (err) {
-      console.error('Error reading database file:', err);
-      throw err;
+  if (databaseCache) return databaseCache;
+  // Local file is only a development fallback. Production initialization loads Supabase first.
+  if (process.env.NODE_ENV !== 'production' && fs.existsSync(DB_FILE)) {
+    const data: DatabaseSchema = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    if (!Array.isArray(data.projects)) data.projects = [];
+    databaseCache = data;
+    return databaseCache;
+  }
+  throw new Error('DATABASE_NOT_INITIALIZED');
+}
+
+async function initializeDatabase(): Promise<DatabaseSchema> {
+  if (process.env.NODE_ENV !== 'production') {
+    if (fs.existsSync(DB_FILE)) {
+      const localData: DatabaseSchema = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+      if (!Array.isArray(localData.projects)) localData.projects = [];
+      databaseCache = localData;
+      return localData;
     }
   }
 
-  // Database file missing: never silently recreate/overwrite user data
-  console.error('[DATABASE ERROR] database.json est introuvable:', DB_FILE);
-  throw new Error('DATABASE_FILE_MISSING');
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_ENV_MISSING');
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from('portfolio_state')
+    .select('id,data,updated_at')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error) throw new Error(`SUPABASE_READ_FAILED: ${error.message}`);
+  if (!data || !data.data || typeof data.data !== 'object' || Array.isArray(data.data)) {
+    throw new Error('SUPABASE_STATE_ROW_MISSING_OR_INVALID; refusing to seed or overwrite data');
+  }
+
+  const db = data.data as DatabaseSchema;
+  if (!Array.isArray(db.projects) || !Array.isArray(db.messages) || !db.profile || !db.presentationVideo || !db.settings || !db.stats) {
+    throw new Error('SUPABASE_STATE_SCHEMA_INVALID; refusing to overwrite data');
+  }
+  if (data.updated_at && !db.lastUpdated) db.lastUpdated = data.updated_at;
+  databaseCache = db;
+  console.log(`[Supabase] Loaded existing state: ${db.projects.length} projects, ${db.messages.length} messages.`);
+  return db;
 }
 
-
-function saveDatabase(data: DatabaseSchema): string {
+async function saveDatabase(data: DatabaseSchema): Promise<string> {
   const timestamp = new Date().toISOString();
   data.lastUpdated = timestamp;
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  databaseCache = data;
+  const snapshot = JSON.parse(JSON.stringify(data)) as DatabaseSchema;
+
+  const write = persistenceQueue.catch(() => undefined).then(async () => {
+    const { error } = await getSupabaseClient()
+      .from('portfolio_state')
+      .upsert({ id: 1, data: snapshot, updated_at: timestamp }, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
+  });
+  persistenceQueue = write;
+  await write;
+
+  if (process.env.NODE_ENV !== 'production') {
+    try { fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8'); }
+    catch (err) { console.warn('[Database] Local development backup failed:', err); }
+  }
   return timestamp;
 }
 
@@ -502,7 +536,7 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
 });
 
 // 3. Profile API
-app.put('/api/profile', requireAdmin, (req: Request, res: Response) => {
+app.put('/api/profile', requireAdmin, async (req: Request, res: Response) => {
   try {
     const updates = req.body;
     const db = getDatabase();
@@ -511,7 +545,7 @@ app.put('/api/profile', requireAdmin, (req: Request, res: Response) => {
       ...updates,
       lastUpdated: new Date().toISOString(),
     };
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       profile: db.profile,
@@ -525,7 +559,7 @@ app.put('/api/profile', requireAdmin, (req: Request, res: Response) => {
 });
 
 // 4. Presentation Video API
-app.put('/api/presentation-video', requireAdmin, (req: Request, res: Response) => {
+app.put('/api/presentation-video', requireAdmin, async (req: Request, res: Response) => {
   try {
     const updates = req.body;
     const db = getDatabase();
@@ -534,7 +568,7 @@ app.put('/api/presentation-video', requireAdmin, (req: Request, res: Response) =
       ...updates,
       lastUpdated: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     };
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       presentationVideo: db.presentationVideo,
@@ -547,7 +581,7 @@ app.put('/api/presentation-video', requireAdmin, (req: Request, res: Response) =
   }
 });
 
-app.delete('/api/presentation-video', requireAdmin, (req: Request, res: Response) => {
+app.delete('/api/presentation-video', requireAdmin, async (req: Request, res: Response) => {
   try {
     const db = getDatabase();
     // If local video file exists and not used elsewhere, delete it
@@ -565,7 +599,7 @@ app.delete('/api/presentation-video', requireAdmin, (req: Request, res: Response
       format: '',
       lastUpdated: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     };
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       presentationVideo: db.presentationVideo,
@@ -681,7 +715,7 @@ app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) 
     const storagePath = `videos/${uniqueFileName}`;
 
     // Envoi vers Supabase Storage
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await getSupabaseClient().storage
       .from(SUPABASE_BUCKET)
       .upload(storagePath, videoBuffer, {
         contentType: declaredType || `video/${ext === 'mov' ? 'quicktime' : ext}`,
@@ -694,7 +728,7 @@ app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) 
     }
 
     // URL publique de la vidéo
-    const { data: publicUrlData } = supabase.storage
+    const { data: publicUrlData } = getSupabaseClient().storage
       .from(SUPABASE_BUCKET)
       .getPublicUrl(storagePath);
 
@@ -840,7 +874,7 @@ app.post('/api/upload', requireAdmin, (req: Request, res: Response) => {
 
 // 8. Projects CRUD Endpoints
 // GET single project
-app.get('/api/projects/:id', (req: Request, res: Response) => {
+app.get('/api/projects/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   const db = getDatabase();
   const project = db.projects.find(p => p.id === id);
@@ -852,7 +886,7 @@ app.get('/api/projects/:id', (req: Request, res: Response) => {
 });
 
 // CREATE project
-app.post('/api/projects', requireAdmin, (req: Request, res: Response) => {
+app.post('/api/projects', requireAdmin, async (req: Request, res: Response) => {
   try {
     const projectData = req.body;
     const db = getDatabase();
@@ -864,7 +898,7 @@ app.post('/api/projects', requireAdmin, (req: Request, res: Response) => {
     db.projects.unshift(newProject);
     db.stats.totalProjects = db.projects.length;
     db.stats.publishedVideos = db.projects.filter(p => p.status === 'Publié').length;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
 
     console.log(`[PROJECT CREATE] Created project ${newProject.id}: "${newProject.title}". Total: ${db.projects.length}`);
 
@@ -881,7 +915,7 @@ app.post('/api/projects', requireAdmin, (req: Request, res: Response) => {
 });
 
 // UPDATE project
-app.put('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
+app.put('/api/projects/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -917,7 +951,7 @@ app.put('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
       updatedAt: new Date().toISOString(),
     };
     db.stats.publishedVideos = db.projects.filter(p => p.status === 'Publié').length;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
 
     console.log(`[PROJECT UPDATE] Updated project ${id}: "${db.projects[index].title}"`);
 
@@ -934,7 +968,7 @@ app.put('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
 });
 
 // DELETE project (Permanent and definitive - Bug A)
-app.delete('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
+app.delete('/api/projects/:id', requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
   console.log(`[PROJECT DELETE] projectId = ${id}`);
   console.log(`[PROJECT DELETE] API request sent`);
@@ -973,7 +1007,7 @@ app.delete('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
     db.stats.totalProjects = db.projects.length;
     db.stats.publishedVideos = db.projects.filter(p => p.status === 'Publié').length;
 
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     console.log(`[PROJECT DELETE] database deletion = success (Remaining projects: ${db.projects.length})`);
     console.log(`[PROJECT DELETE] API response = success`);
 
@@ -992,7 +1026,7 @@ app.delete('/api/projects/:id', requireAdmin, (req: Request, res: Response) => {
 });
 
 // Toggle Project Publish Status
-app.patch('/api/projects/:id/publish', requireAdmin, (req: Request, res: Response) => {
+app.patch('/api/projects/:id/publish', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const db = getDatabase();
@@ -1004,7 +1038,7 @@ app.patch('/api/projects/:id/publish', requireAdmin, (req: Request, res: Respons
     project.status = project.status === 'Publié' ? 'Brouillon' : 'Publié';
     project.updatedAt = new Date().toISOString();
     db.stats.publishedVideos = db.projects.filter(p => p.status === 'Publié').length;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       project,
@@ -1018,7 +1052,7 @@ app.patch('/api/projects/:id/publish', requireAdmin, (req: Request, res: Respons
 });
 
 // 9. Messages API
-app.post('/api/messages', (req: Request, res: Response) => {
+app.post('/api/messages', async (req: Request, res: Response) => {
   try {
     const { name, email, phone, projectType, message } = req.body;
     if (!name || !message) {
@@ -1039,7 +1073,7 @@ app.post('/api/messages', (req: Request, res: Response) => {
     };
     db.messages.unshift(newMessage);
     db.stats.receivedMessages = db.messages.length;
-    saveDatabase(db);
+    await saveDatabase(db);
     res.json({
       success: true,
       message: newMessage,
@@ -1051,7 +1085,7 @@ app.post('/api/messages', (req: Request, res: Response) => {
   }
 });
 
-app.patch('/api/messages/:id/read', requireAdmin, (req: Request, res: Response) => {
+app.patch('/api/messages/:id/read', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const db = getDatabase();
@@ -1061,20 +1095,20 @@ app.patch('/api/messages/:id/read', requireAdmin, (req: Request, res: Response) 
       return;
     }
     msg.unread = !msg.unread;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({ success: true, message: msg, lastUpdated });
   } catch (err: any) {
     res.status(500).json({ success: false, error: 'Erreur lors du marquage du message.' });
   }
 });
 
-app.delete('/api/messages/:id', requireAdmin, (req: Request, res: Response) => {
+app.delete('/api/messages/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const db = getDatabase();
     db.messages = db.messages.filter(m => m.id !== id);
     db.stats.receivedMessages = db.messages.length;
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({ success: true, id, lastUpdated });
   } catch (err: any) {
     res.status(500).json({ success: false, error: 'Erreur lors de la suppression du message.' });
@@ -1082,7 +1116,7 @@ app.delete('/api/messages/:id', requireAdmin, (req: Request, res: Response) => {
 });
 
 // 10. Settings API
-app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
+app.put('/api/settings', requireAdmin, async (req: Request, res: Response) => {
   try {
     const updates = req.body;
     const db = getDatabase();
@@ -1091,7 +1125,7 @@ app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
       ...updates,
       lastUpdated: new Date().toISOString(),
     };
-    const lastUpdated = saveDatabase(db);
+    const lastUpdated = await saveDatabase(db);
     res.json({
       success: true,
       settings: db.settings,
@@ -1104,11 +1138,11 @@ app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
 });
 
 // 11. Stats Visit Counter
-app.post('/api/stats/visit', (req: Request, res: Response) => {
+app.post('/api/stats/visit', async (req: Request, res: Response) => {
   try {
     const db = getDatabase();
     db.stats.visitorCount = (db.stats.visitorCount || 1420) + 1;
-    saveDatabase(db);
+    await saveDatabase(db);
     res.json({ success: true, visitorCount: db.stats.visitorCount });
   } catch (err: any) {
     res.json({ success: false });
@@ -1138,7 +1172,8 @@ app.post('/api/admin/reset-baseline', requireAdmin, (req: Request, res: Response
 
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
-  const db = getDatabase();
+  if (!process.env.ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD environment variable is required');
+  const db = await initializeDatabase();
   console.log(`[Database] Loaded ${db.projects.length} projects, ${db.messages.length} messages. Last updated: ${db.lastUpdated}`);
 
   if (!isProd) {
@@ -1155,9 +1190,10 @@ async function startServer() {
 });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, 'dist')));
+    const distDir = path.resolve(ROOT_DIR, 'dist');
+    app.use(express.static(distDir));
     app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.resolve(ROOT_DIR, 'dist', 'index.html'));
     });
   }
 

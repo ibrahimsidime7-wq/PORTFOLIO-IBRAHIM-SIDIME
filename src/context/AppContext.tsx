@@ -131,16 +131,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Auth State
   const [adminToken, setAdminToken] = useState<string | null>(() => {
-    return localStorage.getItem('ibrahim_admin_token') || (localStorage.getItem('ibrahim_admin_auth') === 'true' ? 'ibrahim-persistent-admin-token' : null);
+    return localStorage.getItem('ibrahim_admin_token') || null;
   });
   const [refreshToken, setRefreshToken] = useState<string | null>(() => {
-    return localStorage.getItem('ibrahim_admin_refresh_token') || (localStorage.getItem('ibrahim_admin_auth') === 'true' ? 'ibrahim-persistent-admin-refresh' : null);
+    return localStorage.getItem('ibrahim_admin_refresh_token') || null;
   });
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>(() => {
     const hasCreds = Boolean(
       localStorage.getItem('ibrahim_admin_token') ||
-      localStorage.getItem('ibrahim_admin_refresh_token') ||
-      localStorage.getItem('ibrahim_admin_auth') === 'true'
+      localStorage.getItem('ibrahim_admin_refresh_token')
     );
     return hasCreds ? 'loading' : 'unauthenticated';
   });
@@ -246,7 +245,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Session Token Refresh
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    const refToken = refreshToken || localStorage.getItem('ibrahim_admin_refresh_token') || 'ibrahim-persistent-admin-refresh';
+    const refToken = refreshToken || localStorage.getItem('ibrahim_admin_refresh_token');
+    if (!refToken) return false;
     try {
       const res = await fetch('/api/auth/refresh', {
         method: 'POST',
@@ -259,15 +259,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (data.refreshToken) setRefreshToken(data.refreshToken);
         localStorage.setItem('ibrahim_admin_token', data.token);
         if (data.refreshToken) localStorage.setItem('ibrahim_admin_refresh_token', data.refreshToken);
-        localStorage.setItem('ibrahim_admin_auth', 'true');
         setAuthStatus('authenticated');
         return true;
       }
       return false;
     } catch (err) {
       console.warn('Network issue during token refresh:', err);
-      setAuthStatus('authenticated');
-      return true;
+      setAuthStatus('unauthenticated');
+      return false;
     }
   }, [refreshToken]);
 
@@ -275,7 +274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const verifySession = useCallback(async (): Promise<boolean> => {
     const curToken = adminToken || localStorage.getItem('ibrahim_admin_token');
     const curRefresh = refreshToken || localStorage.getItem('ibrahim_admin_refresh_token');
-    if (!curToken && !curRefresh && localStorage.getItem('ibrahim_admin_auth') !== 'true') {
+    if (!curToken && !curRefresh) {
       setAuthStatus('unauthenticated');
       return false;
     }
@@ -291,21 +290,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setAuthStatus('authenticated');
           return true;
         }
-        if (res.status === 401 && (curRefresh || localStorage.getItem('ibrahim_admin_auth') === 'true')) {
+        if (res.status === 401 && curRefresh) {
           return await refreshSession();
         }
-      } else if (curRefresh || localStorage.getItem('ibrahim_admin_auth') === 'true') {
+      } else if (curRefresh) {
         return await refreshSession();
       }
       setAuthStatus('unauthenticated');
       localStorage.removeItem('ibrahim_admin_token');
       localStorage.removeItem('ibrahim_admin_refresh_token');
-      localStorage.removeItem('ibrahim_admin_auth');
-      return false;
+        return false;
     } catch (netErr) {
-      console.warn('Network error checking session, keeping credentials:', netErr);
-      setAuthStatus('authenticated');
-      return true;
+      console.warn('Network error checking session:', netErr);
+      setAuthStatus('unauthenticated');
+      return false;
     }
   }, [adminToken, refreshToken, refreshSession]);
 
@@ -315,7 +313,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Authenticated fetch with automatic recovery
   const authenticatedFetch = useCallback(async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
-    let token = adminToken || localStorage.getItem('ibrahim_admin_token') || 'ibrahim-persistent-admin-token';
+    let token = adminToken || localStorage.getItem('ibrahim_admin_token') || '';
     const headers = new Headers(init.headers || {});
     if (!headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${token}`);
@@ -324,7 +322,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (res.status === 401) {
       const refreshed = await refreshSession();
       if (refreshed) {
-        const freshToken = localStorage.getItem('ibrahim_admin_token') || 'ibrahim-persistent-admin-token';
+        const freshToken = localStorage.getItem('ibrahim_admin_token') || '';
         headers.set('Authorization', `Bearer ${freshToken}`);
         res = await fetch(input, { ...init, headers });
       } else {
@@ -350,7 +348,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (data.refreshToken) setRefreshToken(data.refreshToken);
         localStorage.setItem('ibrahim_admin_token', data.token);
         if (data.refreshToken) localStorage.setItem('ibrahim_admin_refresh_token', data.refreshToken);
-        localStorage.setItem('ibrahim_admin_auth', 'true');
         setAuthStatus('authenticated');
         showToast('Connexion réussie ! Bienvenue Ibrahim.', 'success');
         navigate('/admin');
@@ -359,20 +356,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: data.error || 'Identifiants invalides' };
       }
     } catch {
-      // Fallback offline verification if server is temporarily reloading
-      if (email.trim().toLowerCase() === 'ibrahimsidime7@gmail.com' && pass.trim() === 'Khalil09') {
-        const fallbackToken = 'ibrahim-persistent-admin-token';
-        const fallbackRefresh = 'ibrahim-persistent-admin-refresh';
-        setAdminToken(fallbackToken);
-        setRefreshToken(fallbackRefresh);
-        localStorage.setItem('ibrahim_admin_token', fallbackToken);
-        localStorage.setItem('ibrahim_admin_refresh_token', fallbackRefresh);
-        localStorage.setItem('ibrahim_admin_auth', 'true');
-        setAuthStatus('authenticated');
-        showToast('Connexion réussie ! Bienvenue Ibrahim.', 'success');
-        navigate('/admin');
-        return { success: true };
-      }
       return { success: false, error: 'Serveur injoignable. Veuillez réessayer.' };
     }
   };
@@ -395,7 +378,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthStatus('unauthenticated');
     localStorage.removeItem('ibrahim_admin_token');
     localStorage.removeItem('ibrahim_admin_refresh_token');
-    localStorage.removeItem('ibrahim_admin_auth');
     showToast('Vous avez été déconnecté.', 'info');
     navigate('/login');
   };
@@ -443,7 +425,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/upload-video', true);
-      const token = adminToken || localStorage.getItem('ibrahim_admin_token') || 'ibrahim-persistent-admin-token';
+      const token = adminToken || localStorage.getItem('ibrahim_admin_token') || '';
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.setRequestHeader('Content-Type', 'application/octet-stream');
       xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
