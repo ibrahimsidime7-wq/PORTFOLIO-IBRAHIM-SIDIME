@@ -186,9 +186,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       setDatabaseError(null);
       console.log('[DATABASE BOOTSTRAP] Fetching authoritative state from /api/bootstrap...');
-      const res = await fetch('/api/bootstrap', {
-        headers: { 'Cache-Control': 'no-cache' },
-      });
+      const token = adminToken || localStorage.getItem('ibrahim_admin_token') || '';
+      const headers = new Headers({ 'Cache-Control': 'no-cache' });
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+      const res = await fetch('/api/bootstrap', { headers });
       if (!res.ok) {
         throw new Error(`Erreur serveur (${res.status})`);
       }
@@ -212,11 +213,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsDatabaseLoading(false);
     }
-  }, []);
+  }, [adminToken]);
 
   useEffect(() => {
     refreshDatabase();
   }, [refreshDatabase]);
+
+  useEffect(() => {
+    if (authStatus === 'authenticated') void refreshDatabase();
+  }, [authStatus, refreshDatabase]);
 
   // Track visit
   useEffect(() => {
