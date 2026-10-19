@@ -15,9 +15,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 const PORT = Number(process.env.PORT) || 3000;
 const SUPABASE_BUCKET = 'PORTFOLIO-MEDIA';
-let supabaseClient: ReturnType<typeof createClient> | null = null;
+let supabaseClient: any = null;
 
-function getSupabaseClient() {
+function getSupabaseClient(): any {
   const url = process.env.SUPABASE_URL?.trim();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
