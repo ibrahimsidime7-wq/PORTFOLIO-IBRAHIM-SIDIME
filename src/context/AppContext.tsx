@@ -558,6 +558,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const res = await authenticatedFetch('/api/presentation-video', {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
