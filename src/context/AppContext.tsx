@@ -320,6 +320,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const authenticatedFetch = useCallback(async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
     let token = adminToken || localStorage.getItem('ibrahim_admin_token') || '';
     const headers = new Headers(init.headers || {});
+    // Express only parses JSON request bodies when this header is present.
+    // Set it centrally so project edits (including project video URLs) persist correctly.
+    if (init.body && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
     if (!headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${token}`);
     }
