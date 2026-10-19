@@ -453,22 +453,24 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 app.get('/api/bootstrap', (req: Request, res: Response) => {
   try {
     const db = getDatabase();
+    const authorization = req.headers.authorization;
+    const token = authorization?.startsWith('Bearer ') ? authorization.split(' ')[1] : '';
+    const isAdmin = Boolean(token && validateToken(token).valid);
+    const visibleProjects = Array.isArray(db.projects)
+      ? (isAdmin ? db.projects : db.projects.filter(p => p.status === 'Publié'))
+      : [];
     res.json({
       success: true,
       profile: db.profile,
       presentationVideo: db.presentationVideo,
-      projects: Array.isArray(db.projects) ? db.projects : [],
-      // Private contact messages are exposed only to a valid administrator session.
-      messages: (() => {
-        const authorization = req.headers.authorization;
-        const token = authorization?.startsWith('Bearer ') ? authorization.split(' ')[1] : '';
-        return token && validateToken(token).valid ? db.messages : [];
-      })(),
+      projects: visibleProjects,
+      messages: isAdmin ? db.messages : [],
       settings: db.settings,
       stats: {
         ...db.stats,
-        totalProjects: db.projects.length,
+        totalProjects: isAdmin ? db.projects.length : visibleProjects.length,
         publishedVideos: db.projects.filter(p => p.status === 'Publié').length,
+        receivedMessages: isAdmin ? db.messages.length : 0,
       },
       lastUpdated: db.lastUpdated,
     });
@@ -774,7 +776,7 @@ app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) 
   }
 });
 // 6. Video availability check
-app.get('/api/check-video', (req: Request, res: Response) => {
+app.get(['/api/check-video', '/api/videos/verify'], (req: Request, res: Response) => {
   const videoUrl = typeof req.query.url === 'string' ? req.query.url : '';
   if (!videoUrl) {
     res.status(400).json({ exists: false, reason: 'URL vidéo manquante' });
@@ -832,48 +834,57 @@ app.get('/api/check-video', (req: Request, res: Response) => {
 });
 
 // 7. General Media Upload (Thumbnails, Posters, Images)
-app.post('/api/upload', requireAdmin, (req: Request, res: Response) => {
+app.post('/api/upload', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { fileData, fileName } = req.body;
-    if (!fileData) {
-      res.status(400).json({ success: false, error: 'Aucun fichier transmis' });
-      return;
-    }
-    let buffer: Buffer;
-    let extension = 'bin';
-    if (fileData.startsWith('data:')) {
-      const matches = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      if (matches && matches.length === 3) {
-        const mimeType = matches[1];
-        buffer = Buffer.from(matches[2], 'base64');
-        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
-        else if (mimeType.includes('png')) extension = 'png';
-        else if (mimeType.includes('webp')) extension = 'webp';
-        else if (mimeType.includes('mp4')) extension = 'mp4';
-        else if (mimeType.includes('quicktime') || mimeType.includes('mov')) extension = 'mov';
-      } else {
-        res.status(400).json({ success: false, error: 'Format base64 invalide' });
-        return;
-      }
-    } else {
+    if (typeof fileData !== 'string' || !fileData.startsWith('data:')) {
       res.status(400).json({ success: false, error: 'Données de fichier requises sous format data-uri' });
       return;
     }
-    const safeName = (fileName || 'media').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const matches = fileData.match(/^data:([A-Za-z0-9.+-]+\\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
+    if (!matches) {
+      res.status(400).json({ success: false, error: 'Format base64 invalide' });
+      return;
+    }
+    const mimeType = matches[1].toLowerCase();
+    const extensionByMime: Record<string, string> = {
+      'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+      'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
+    };
+    const extension = extensionByMime[mimeType];
+    if (!extension) {
+      res.status(415).json({ success: false, error: 'Format non supporté. Utilisez JPG, PNG, WEBP, GIF, MP4, MOV ou WEBM.' });
+      return;
+    }
+    const buffer = Buffer.from(matches[2], 'base64');
+    if (!buffer.length) {
+      res.status(400).json({ success: false, error: 'Fichier vide ou invalide.' });
+      return;
+    }
+    const safeName = String(fileName || 'media').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'media';
     const uniqueFileName = `${Date.now()}_${safeName}.${extension}`;
-    const destinationPath = path.join(UPLOADS_DIR, uniqueFileName);
-    fs.writeFileSync(destinationPath, buffer);
-    const publicUrl = `/uploads/${uniqueFileName}`;
+    const storagePath = `media/${uniqueFileName}`;
+    const { error: uploadError } = await getSupabaseClient().storage
+      .from(SUPABASE_BUCKET)
+      .upload(storagePath, buffer, { contentType: mimeType, upsert: false });
+    if (uploadError) {
+      console.error('[SUPABASE MEDIA UPLOAD ERROR]', uploadError);
+      throw uploadError;
+    }
+    const { data: publicUrlData } = getSupabaseClient().storage
+      .from(SUPABASE_BUCKET)
+      .getPublicUrl(storagePath);
     res.json({
       success: true,
-      url: publicUrl,
+      url: publicUrlData.publicUrl,
       fileName: uniqueFileName,
       size: buffer.length,
-      message: 'Média téléversé et stocké de manière permanente.',
+      storage: 'supabase',
+      message: 'Média téléversé dans Supabase Storage.',
     });
   } catch (err: any) {
     console.error('Upload error:', err);
-    res.status(500).json({ success: false, error: 'Erreur lors de l\'enregistrement du fichier sur le serveur.' });
+    res.status(500).json({ success: false, error: 'Erreur lors de l’enregistrement du fichier dans Supabase Storage.' });
   }
 });
 
