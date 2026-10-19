@@ -139,8 +139,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>(() => {
     const hasCreds = Boolean(
       localStorage.getItem('ibrahim_admin_token') ||
-      localStorage.getItem('ibrahim_admin_refresh_token') ||
-      localStorage.getItem('ibrahim_admin_auth') === 'true'
+      localStorage.getItem('ibrahim_admin_refresh_token')
     );
     return hasCreds ? 'loading' : 'unauthenticated';
   });
@@ -260,15 +259,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (data.refreshToken) setRefreshToken(data.refreshToken);
         localStorage.setItem('ibrahim_admin_token', data.token);
         if (data.refreshToken) localStorage.setItem('ibrahim_admin_refresh_token', data.refreshToken);
-        localStorage.setItem('ibrahim_admin_auth', 'true');
         setAuthStatus('authenticated');
         return true;
       }
       return false;
     } catch (err) {
       console.warn('Network issue during token refresh:', err);
-      setAuthStatus('authenticated');
-      return true;
+      setAuthStatus('unauthenticated');
+      return false;
     }
   }, [refreshToken]);
 
@@ -276,7 +274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const verifySession = useCallback(async (): Promise<boolean> => {
     const curToken = adminToken || localStorage.getItem('ibrahim_admin_token');
     const curRefresh = refreshToken || localStorage.getItem('ibrahim_admin_refresh_token');
-    if (!curToken && !curRefresh && localStorage.getItem('ibrahim_admin_auth') !== 'true') {
+    if (!curToken && !curRefresh) {
       setAuthStatus('unauthenticated');
       return false;
     }
@@ -292,21 +290,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setAuthStatus('authenticated');
           return true;
         }
-        if (res.status === 401 && (curRefresh || localStorage.getItem('ibrahim_admin_auth') === 'true')) {
+        if (res.status === 401 && curRefresh) {
           return await refreshSession();
         }
-      } else if (curRefresh || localStorage.getItem('ibrahim_admin_auth') === 'true') {
+      } else if (curRefresh) {
         return await refreshSession();
       }
       setAuthStatus('unauthenticated');
       localStorage.removeItem('ibrahim_admin_token');
       localStorage.removeItem('ibrahim_admin_refresh_token');
-      localStorage.removeItem('ibrahim_admin_auth');
-      return false;
+        return false;
     } catch (netErr) {
-      console.warn('Network error checking session, keeping credentials:', netErr);
-      setAuthStatus('authenticated');
-      return true;
+      console.warn('Network error checking session:', netErr);
+      setAuthStatus('unauthenticated');
+      return false;
     }
   }, [adminToken, refreshToken, refreshSession]);
 
@@ -351,7 +348,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (data.refreshToken) setRefreshToken(data.refreshToken);
         localStorage.setItem('ibrahim_admin_token', data.token);
         if (data.refreshToken) localStorage.setItem('ibrahim_admin_refresh_token', data.refreshToken);
-        localStorage.setItem('ibrahim_admin_auth', 'true');
         setAuthStatus('authenticated');
         showToast('Connexion réussie ! Bienvenue Ibrahim.', 'success');
         navigate('/admin');
@@ -382,7 +378,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthStatus('unauthenticated');
     localStorage.removeItem('ibrahim_admin_token');
     localStorage.removeItem('ibrahim_admin_refresh_token');
-    localStorage.removeItem('ibrahim_admin_auth');
     showToast('Vous avez été déconnecté.', 'info');
     navigate('/login');
   };
