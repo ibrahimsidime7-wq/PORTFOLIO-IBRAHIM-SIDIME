@@ -125,13 +125,21 @@ export const MediaManager: React.FC = () => {
         setHasUnsavedChanges(false);
         setSaveStatus('idle');
 
-        // Automatically persist in DB
-        await updatePresentationVideo({
+        // Automatically persist in DB; only show success when the database confirms it.
+        const saved = await updatePresentationVideo({
           videoUrl: res.videoUrl,
           fileName: file.name,
           fileSize: `${totalInMb} Mo`,
           format: ext.toUpperCase() || 'MP4',
         });
+
+        if (!saved.success) {
+          setUploadSuccessMessage(false);
+          setHasUnsavedChanges(true);
+          setSaveStatus('error');
+          showToast(saved.error || "La vidéo est téléversée, mais l'enregistrement a échoué. Cliquez sur ENREGISTRER pour réessayer.", 'error');
+          return;
+        }
 
         setTimeout(() => {
           setUploadSuccessMessage(false);
