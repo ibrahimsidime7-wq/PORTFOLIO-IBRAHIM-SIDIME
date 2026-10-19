@@ -890,11 +890,14 @@ app.post('/api/upload', requireAdmin, async (req: Request, res: Response) => {
 
 // 8. Projects CRUD Endpoints
 // GET single project
-app.get('/api/projects/:id', async (req: Request, res: Response) => {
+app.get('/api/projects/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const db = getDatabase();
+  const authorization = req.headers.authorization;
+  const token = authorization?.startsWith('Bearer ') ? authorization.split(' ')[1] : '';
+  const isAdmin = Boolean(token && validateToken(token).valid);
   const project = db.projects.find(p => p.id === id);
-  if (!project) {
+  if (!project || (!isAdmin && project.status !== 'Publié')) {
     res.status(404).json({ success: false, error: 'Projet introuvable' });
     return;
   }
