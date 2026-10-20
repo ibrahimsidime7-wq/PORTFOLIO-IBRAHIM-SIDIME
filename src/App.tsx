@@ -27,6 +27,15 @@ const AppContent: React.FC = () => {
     }
   }, [currentRoute, isAuthenticated, authStatus, navigate]);
 
+  // Last-resort recovery: never leave the admin screen on the session spinner forever.
+  useEffect(() => {
+    if (authStatus !== 'loading' || currentRoute !== '/admin') return;
+    const timeoutId = window.setTimeout(() => {
+      navigate('/login');
+    }, 12000);
+    return () => window.clearTimeout(timeoutId);
+  }, [authStatus, currentRoute, navigate]);
+
   // Clean initial loading screen while database is booting or admin session is verifying
   if (isDatabaseLoading || (authStatus === 'loading' && currentRoute === '/admin')) {
     return (
