@@ -917,7 +917,12 @@ app.get('/api/projects/:id', (req: Request, res: Response) => {
 app.post('/api/projects', requireAdmin, async (req: Request, res: Response) => {
   try {
     const projectData = req.body;
-    const db = getDatabase();
+    // Work on an isolated copy so a failed Supabase write cannot mutate the live cache.
+    const db = JSON.parse(JSON.stringify(getDatabase())) as DatabaseSchema;
+    if (!projectData || typeof projectData.title !== 'string' || !projectData.title.trim()) {
+      res.status(400).json({ success: false, error: 'Le titre du projet est obligatoire.' });
+      return;
+    }
     const newProject = {
       ...projectData,
       id: `proj-${Date.now()}`,
@@ -938,7 +943,8 @@ app.post('/api/projects', requireAdmin, async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('Error creating project:', err);
-    res.status(500).json({ success: false, error: 'Échec de la création du projet.' });
+    const detail = typeof err?.message === 'string' ? err.message : 'Erreur inconnue';
+    res.status(500).json({ success: false, error: `Échec de la création du projet : ${detail}` });
   }
 });
 
