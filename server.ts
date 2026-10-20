@@ -634,7 +634,7 @@ function awsEncode(value: string): string {
   return encodeURIComponent(value).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
 }
 
-function signR2PutUrl(objectKey: string, contentType: string): string {
+function signR2PutUrl(objectKey: string): string {
   const accountId = process.env.R2_ACCOUNT_ID?.trim();
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
@@ -685,7 +685,7 @@ app.post('/api/video-upload-url', requireAdmin, async (req: Request, res: Respon
     const uniqueFileName = `video_${Date.now()}_${safeBaseName}.${ext}`;
     const storagePath = `videos/${uniqueFileName}`;
     const contentType = declaredType || (ext === 'mov' ? 'video/quicktime' : `video/${ext}`);
-    const signedUrl = signR2PutUrl(storagePath, contentType);
+    const signedUrl = signR2PutUrl(storagePath);
     const publicBase = process.env.R2_PUBLIC_URL?.trim().replace(/\/+$/, '');
     if (!publicBase) throw new Error('R2_PUBLIC_URL_MISSING');
     const publicUrl = `${publicBase}/${storagePath.split('/').map(awsEncode).join('/')}`;
