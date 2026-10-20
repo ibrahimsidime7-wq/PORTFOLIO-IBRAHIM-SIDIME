@@ -474,7 +474,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             resolve({ success: false, error: errMsg });
           }
         } catch {
-          const errMsg = 'Échec du téléchargement. Veuillez réessayer.';
+          const responseHint = xhr.responseText
+            ? xhr.responseText.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 180)
+            : '';
+          const errMsg = `Échec du téléchargement (HTTP ${xhr.status || 'réseau'}).${responseHint ? ' ' + responseHint : ' Le serveur n’a pas renvoyé de détail.'}`;
           showToast(errMsg, 'error');
           resolve({ success: false, error: errMsg });
         }
