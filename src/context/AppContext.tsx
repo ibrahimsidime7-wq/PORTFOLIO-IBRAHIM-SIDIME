@@ -421,88 +421,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return data.url;
   };
 
-  // Stream Upload Video (MP4, WEBM, MOV up to 500 MB)
+  // Upload video directly from the browser to Supabase Storage (up to 499 MiB).
   const uploadDirectVideo = async (
     file: File,
     onProgress?: (percent: number, loaded: number, total: number) => void
   ): Promise<{ success: boolean; error?: string; videoUrl?: string; presentationVideo?: PresentationVideo; fileName?: string; fileSize?: string; format?: string }> => {
-    const MAX_SIZE = 500 * 1024 * 1024;
+    const MAX_SIZE = 499 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      const error = 'Vidéo trop volumineuse. Taille maximale : 500 Mo.';
+      const error = 'Vidéo trop volumineuse. Taille maximale : 499 Mo.';
       showToast(error, 'error');
       return { success: false, error };
     }
-
     const validExtensions = ['mp4', 'webm', 'mov'];
-    const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+    const extMatch = file.name.match(/\\.([a-zA-Z0-9]+)$/);
     const ext = extMatch ? extMatch[1].toLowerCase() : '';
     const validMimes = ['video/mp4', 'video/webm', 'video/quicktime'];
-
     if (!validExtensions.includes(ext) && !validMimes.includes(file.type)) {
       const error = 'Format non pris en charge. Utilisez MP4, WEBM ou MOV.';
       showToast(error, 'error');
       return { success: false, error };
     }
 
-    return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/upload-video', true);
+    try {
       const token = adminToken || localStorage.getItem('ibrahim_admin_token') || '';
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-      xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
-      xhr.setRequestHeader('X-File-Size', file.size.toString());
-      xhr.setRequestHeader('X-File-Type', file.type || 'video/mp4');
+      const prepare = await fetch('/api/video-upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ fileName: file.name, fileSize: file.size, fileType: file.type || 'video/mp4' }),
+      });
+      const prepared = await prepare.json().catch(() => ({}));
+      if (!prepare.ok || !prepared.success || !prepared.signedUrl) {
+        const error = prepared.error || `Impossible de préparer l’envoi (HTTP ${prepare.status}).`;
+        showToast(error, 'error');
+        return { success: false, error };
+      }
 
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable && onProgress) {
-          const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
-          onProgress(percent, event.loaded, event.total);
-        }
-      };
-
-      xhr.onload = async () => {
-        if (xhr.status === 401) {
-          const renewed = await refreshSession();
-          if (renewed) {
-            resolve(await uploadDirectVideo(file, onProgress));
+      return await new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', prepared.signedUrl, true);
+        xhr.setRequestHeader('Content-Type', prepared.contentType || file.type || 'application/octet-stream');
+        xhr.setRequestHeader('x-upsert', 'false');
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable && onProgress) {
+            onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)), event.loaded, event.total);
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve({ success: true, videoUrl: prepared.publicUrl, fileName: prepared.fileName || file.name, fileSize: file.size, format: prepared.format || ext.toUpperCase() });
             return;
           }
-        }
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (xhr.status >= 200 && xhr.status < 300 && data.success) {
-            console.log(`[VIDEO UPLOAD] Successfully stored: ${data.url}`);
-            resolve({
-              success: true,
-              videoUrl: data.url,
-              fileName: data.fileName,
-              fileSize: data.fileSize,
-              format: data.format,
-            });
-          } else {
-            const errMsg = data.error || 'Échec du téléchargement. Veuillez réessayer.';
-            showToast(errMsg, 'error');
-            resolve({ success: false, error: errMsg });
+          let detail = '';
+          try {
+            const body = JSON.parse(xhr.responseText);
+            detail = body.message || body.error || body.statusCode || '';
+          } catch {
+            detail = xhr.responseText ? xhr.responseText.slice(0, 160) : '';
           }
-        } catch {
-          const responseHint = xhr.responseText
-            ? xhr.responseText.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 180)
-            : '';
-          const errMsg = `Échec du téléchargement (HTTP ${xhr.status || 'réseau'}).${responseHint ? ' ' + responseHint : ' Le serveur n’a pas renvoyé de détail.'}`;
-          showToast(errMsg, 'error');
-          resolve({ success: false, error: errMsg });
-        }
-      };
-
-      xhr.onerror = () => {
-        const errMsg = 'Erreur réseau lors du téléversement.';
-        showToast(errMsg, 'error');
-        resolve({ success: false, error: errMsg });
-      };
-
-      xhr.send(file);
-    });
+          const error = `Échec de l’envoi direct vers Supabase (HTTP ${xhr.status}). ${detail || 'Vérifie la limite de taille autorisée dans Supabase Storage.'}`;
+          showToast(error, 'error');
+          resolve({ success: false, error });
+        };
+        xhr.onerror = () => {
+          const error = 'Erreur réseau pendant l’envoi direct. Vérifie la configuration CORS et la limite de taille de Supabase Storage.';
+          showToast(error, 'error');
+          resolve({ success: false, error });
+        };
+        xhr.send(file);
+      });
+    } catch (err: any) {
+      const error = typeof err?.message === 'string' ? err.message : 'Erreur lors de la préparation du téléversement.';
+      showToast(error, 'error');
+      return { success: false, error };
+    }
   };
 
   // Verify Video File Existence (Bug B check)
