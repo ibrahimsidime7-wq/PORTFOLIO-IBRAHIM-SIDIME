@@ -285,12 +285,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     try {
       if (curToken) {
-        const res = await fetch('/api/auth/verify', {
-          headers: {
-            'Authorization': `Bearer ${curToken}`,
-            'Cache-Control': 'no-cache',
-          },
-        });
+        const verifyController = new AbortController();
+        const verifyTimeout = window.setTimeout(() => verifyController.abort(), 10000);
+        let res: Response;
+        try {
+          res = await fetch('/api/auth/verify', {
+            headers: {
+              'Authorization': `Bearer ${curToken}`,
+              'Cache-Control': 'no-cache',
+            },
+            signal: verifyController.signal,
+          });
+        } finally {
+          window.clearTimeout(verifyTimeout);
+        }
         if (res.ok) {
           setAuthStatus('authenticated');
           return true;
@@ -308,6 +316,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (netErr) {
       console.warn('Network error checking session:', netErr);
       setAuthStatus('unauthenticated');
+      localStorage.removeItem('ibrahim_admin_token');
+      localStorage.removeItem('ibrahim_admin_refresh_token');
+      setAdminToken(null);
+      setRefreshToken(null);
       return false;
     }
   }, [adminToken, refreshToken, refreshSession]);
