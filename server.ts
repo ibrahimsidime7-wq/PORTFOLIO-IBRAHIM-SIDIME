@@ -628,7 +628,7 @@ app.delete('/api/presentation-video', requireAdmin, async (req: Request, res: Re
   }
 });
  // 5. Streaming Video Upload -> Supabase Storage
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB safe limit for in-memory upload on small instances
 
 app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) => {
   let tempPath = '';
@@ -651,7 +651,7 @@ app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) 
     if (declaredSize > MAX_VIDEO_BYTES) {
       return res.status(400).json({
         success: false,
-        error: 'Vidéo trop volumineuse. Taille maximale : 500 Mo.',
+        error: 'Vidéo trop volumineuse. Taille maximale actuelle : 50 Mo. Pour une vidéo plus lourde, utilisez un lien direct.',
       });
     }
 
