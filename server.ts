@@ -627,8 +627,44 @@ app.delete('/api/presentation-video', requireAdmin, async (req: Request, res: Re
     res.status(500).json({ success: false, error: 'Échec de la suppression de la vidéo.' });
   }
 });
- // 5. Streaming Video Upload -> Supabase Storage
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB safe limit for in-memory upload on small instances
+ // 5. Direct-to-Supabase video upload: Render signs the upload; the browser sends bytes to Supabase.
+const MAX_DIRECT_VIDEO_BYTES = 499 * 1024 * 1024; // 499 MiB
+
+app.post('/api/video-upload-url', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const rawFileName = typeof req.body?.fileName === 'string' ? req.body.fileName : 'video.mp4';
+    const declaredSize = Number(req.body?.fileSize || 0);
+    const declaredType = typeof req.body?.fileType === 'string' ? req.body.fileType.toLowerCase() : '';
+    if (!Number.isFinite(declaredSize) || declaredSize <= 0 || declaredSize > MAX_DIRECT_VIDEO_BYTES) {
+      return res.status(400).json({ success: false, error: 'La vidéo doit faire moins de 499 Mo.' });
+    }
+    const extMatch = rawFileName.match(/\.([a-zA-Z0-9]+)$/);
+    const ext = (extMatch?.[1] || '').toLowerCase();
+    if (!['mp4', 'webm', 'mov'].includes(ext)) {
+      return res.status(400).json({ success: false, error: 'Format vidéo non supporté. Utilisez MP4, WEBM ou MOV.' });
+    }
+    const safeBaseName = path.basename(rawFileName, path.extname(rawFileName)).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'video';
+    const uniqueFileName = `video_${Date.now()}_${safeBaseName}.${ext}`;
+    const storagePath = `videos/${uniqueFileName}`;
+    const { data, error } = await getSupabaseClient().storage.from(SUPABASE_BUCKET).createSignedUploadUrl(storagePath, { upsert: false });
+    if (error) throw error;
+    const { data: publicData } = getSupabaseClient().storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
+    const baseUrl = process.env.SUPABASE_URL?.trim();
+    const signedUrl = data.signedUrl.startsWith('http') ? data.signedUrl : new URL(data.signedUrl, baseUrl).toString();
+    return res.json({
+      success: true, signedUrl, publicUrl: publicData.publicUrl,
+      fileName: uniqueFileName, originalName: rawFileName, fileSize: declaredSize,
+      format: ext.toUpperCase(),
+      contentType: declaredType || (ext === 'mov' ? 'video/quicktime' : `video/${ext}`),
+    });
+  } catch (err: any) {
+    console.error('[SIGNED VIDEO UPLOAD URL ERROR]', err);
+    return res.status(500).json({ success: false, error: `Impossible de préparer l’envoi direct vers Supabase : ${typeof err?.message === 'string' ? err.message : 'erreur inconnue'}` });
+  }
+});
+
+ // 5b. Legacy server-proxied upload (kept for compatibility)
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB safe limit for legacy route
 
 app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) => {
   let tempPath = '';
