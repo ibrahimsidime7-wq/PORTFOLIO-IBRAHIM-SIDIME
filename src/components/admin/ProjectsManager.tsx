@@ -733,6 +733,29 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
                   </div>
                 )}
 
+                {/* External video URL input */}
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-300">
+                    Ou coller l’URL directe de la vidéo
+                  </label>
+                  <input
+                    type="url"
+                    inputMode="url"
+                    placeholder="https://exemple.com/ma-video.mp4"
+                    value={videoUrl.startsWith('http') ? videoUrl : ''}
+                    onChange={(e) => {
+                      const url = e.target.value.trim();
+                      setVideoUrl(url);
+                      setVideoFileName(url ? (url.split('/').pop()?.split('?')[0] || 'Vidéo externe') : '');
+                      setVideoFileSize('');
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070b16] border border-slate-700 text-white text-sm focus:outline-none focus:border-orange-500"
+                  />
+                  <p className="text-[10px] text-slate-500">
+                    Collez un lien direct vers un fichier vidéo MP4, WEBM ou MOV. Les liens de page YouTube/TikTok ne sont pas des liens directs de fichier vidéo.
+                  </p>
+                </div>
+
                 {/* Video Picker or Current Video State */}
                 <input
                   ref={videoInputRef}
