@@ -776,7 +776,7 @@ app.post('/api/upload-video', requireAdmin, async (req: Request, res: Response) 
     const message =
       err?.message === 'VIDEO_TOO_LARGE'
         ? 'Vidéo trop volumineuse. Taille maximale : 500 Mo.'
-        : 'Échec du téléchargement de la vidéo. Veuillez réessayer.';
+        : `Échec du stockage vidéo : ${typeof err?.message === 'string' ? err.message : 'erreur inconnue'}`;
 
     return res.status(500).json({
       success: false,
