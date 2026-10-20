@@ -711,7 +711,7 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
                 </div>
 
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Le fichier est directement téléversé et stocké de façon permanente sur le serveur (MP4, WEBM, MOV jusqu'à 499 Mo). Aucune URL temporaire n'est utilisée.
+                  Le fichier est envoyé directement vers Cloudflare R2 (MP4, WEBM, MOV jusqu’à 499 Mo). Aucun lien vidéo n’est à fournir.
                 </p>
 
                 {/* Upload in Progress */}
