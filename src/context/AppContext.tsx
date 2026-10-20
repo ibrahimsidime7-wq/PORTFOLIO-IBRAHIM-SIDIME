@@ -421,7 +421,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return data.url;
   };
 
-  // Upload video directly from the browser to Supabase Storage (up to 499 MiB).
+  // Upload video directly from the browser to Cloudflare R2 (up to 499 MiB).
   const uploadDirectVideo = async (
     file: File,
     onProgress?: (percent: number, loaded: number, total: number) => void
@@ -458,9 +458,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return await new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', prepared.signedUrl, true);
+        xhr.open('PUT', prepared.signedUrl, true);
         xhr.setRequestHeader('Content-Type', prepared.contentType || file.type || 'application/octet-stream');
-        xhr.setRequestHeader('x-upsert', 'false');
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable && onProgress) {
             onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)), event.loaded, event.total);
@@ -478,12 +477,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } catch {
             detail = xhr.responseText ? xhr.responseText.slice(0, 160) : '';
           }
-          const error = `Échec de l’envoi direct vers Supabase (HTTP ${xhr.status}). ${detail || 'Vérifie la limite de taille autorisée dans Supabase Storage.'}`;
+          const error = `Échec de l’envoi direct vers Cloudflare R2 (HTTP ${xhr.status}). ${detail || 'Vérifie la configuration CORS du bucket R2.'}`;
           showToast(error, 'error');
           resolve({ success: false, error });
         };
         xhr.onerror = () => {
-          const error = 'Erreur réseau pendant l’envoi direct. Vérifie la configuration CORS et la limite de taille de Supabase Storage.';
+          const error = 'Erreur réseau pendant l’envoi direct. Vérifie la configuration CORS du bucket Cloudflare R2.';
           showToast(error, 'error');
           resolve({ success: false, error });
         };
