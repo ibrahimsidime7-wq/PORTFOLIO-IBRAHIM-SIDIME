@@ -643,7 +643,7 @@ function signR2PutUrl(objectKey: string): string {
   const host = `${accountId}.r2.cloudflarestorage.com`;
   const canonicalUri = `/${awsEncode(bucket)}/${objectKey.split('/').map(awsEncode).join('/')}`;
   const now = new Date();
-  const amzDate = now.toISOString().replace(/[:-]|.\d{3}/g, '');
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
   const dateStamp = amzDate.slice(0, 8);
   const scope = `${dateStamp}/auto/s3/aws4_request`;
   const query: Record<string, string> = {
