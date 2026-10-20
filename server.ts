@@ -627,8 +627,46 @@ app.delete('/api/presentation-video', requireAdmin, async (req: Request, res: Re
     res.status(500).json({ success: false, error: 'Échec de la suppression de la vidéo.' });
   }
 });
- // 5. Direct-to-Supabase video upload: Render signs the upload; the browser sends bytes to Supabase.
+ // 5. Direct-to-Cloudflare R2 video upload: Render signs a short-lived S3-compatible PUT URL.
 const MAX_DIRECT_VIDEO_BYTES = 499 * 1024 * 1024; // 499 MiB
+
+function awsEncode(value: string): string {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+function signR2PutUrl(objectKey: string, contentType: string): string {
+  const accountId = process.env.R2_ACCOUNT_ID?.trim();
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
+  const bucket = process.env.R2_BUCKET_NAME?.trim() || 'portfolio-videos';
+  if (!accountId || !accessKeyId || !secretAccessKey) throw new Error('R2_ENV_MISSING');
+  const host = `${accountId}.r2.cloudflarestorage.com`;
+  const canonicalUri = `/${awsEncode(bucket)}/${objectKey.split('/').map(awsEncode).join('/')}`;
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|.\d{3}/g, '');
+  const dateStamp = amzDate.slice(0, 8);
+  const scope = `${dateStamp}/auto/s3/aws4_request`;
+  const query: Record<string, string> = {
+    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+    'X-Amz-Credential': `${accessKeyId}/${scope}`,
+    'X-Amz-Date': amzDate,
+    'X-Amz-Expires': '3600',
+    'X-Amz-SignedHeaders': 'host',
+  };
+  const canonicalQuery = Object.entries(query)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${awsEncode(key)}=${awsEncode(value)}`)
+    .join('&');
+  const canonicalRequest = ['PUT', canonicalUri, canonicalQuery, `host:${host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, crypto.createHash('sha256').update(canonicalRequest).digest('hex')].join('\n');
+  const hmac = (key: Buffer | string, value: string) => crypto.createHmac('sha256', key).update(value).digest();
+  const dateKey = hmac(`AWS4${secretAccessKey}`, dateStamp);
+  const regionKey = hmac(dateKey, 'auto');
+  const serviceKey = hmac(regionKey, 's3');
+  const signingKey = hmac(serviceKey, 'aws4_request');
+  const signature = crypto.createHmac('sha256', signingKey).update(stringToSign).digest('hex');
+  return `https://${host}${canonicalUri}?${canonicalQuery}&X-Amz-Signature=${signature}`;
+}
 
 app.post('/api/video-upload-url', requireAdmin, async (req: Request, res: Response) => {
   try {
@@ -646,20 +684,24 @@ app.post('/api/video-upload-url', requireAdmin, async (req: Request, res: Respon
     const safeBaseName = path.basename(rawFileName, path.extname(rawFileName)).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'video';
     const uniqueFileName = `video_${Date.now()}_${safeBaseName}.${ext}`;
     const storagePath = `videos/${uniqueFileName}`;
-    const { data, error } = await getSupabaseClient().storage.from(SUPABASE_BUCKET).createSignedUploadUrl(storagePath, { upsert: false });
-    if (error) throw error;
-    const { data: publicData } = getSupabaseClient().storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
-    const baseUrl = process.env.SUPABASE_URL?.trim();
-    const signedUrl = data.signedUrl.startsWith('http') ? data.signedUrl : new URL(data.signedUrl, baseUrl).toString();
+    const contentType = declaredType || (ext === 'mov' ? 'video/quicktime' : `video/${ext}`);
+    const signedUrl = signR2PutUrl(storagePath, contentType);
+    const publicBase = process.env.R2_PUBLIC_URL?.trim().replace(/\/+$/, '');
+    if (!publicBase) throw new Error('R2_PUBLIC_URL_MISSING');
+    const publicUrl = `${publicBase}/${storagePath.split('/').map(awsEncode).join('/')}`;
     return res.json({
-      success: true, signedUrl, publicUrl: publicData.publicUrl,
-      fileName: uniqueFileName, originalName: rawFileName, fileSize: declaredSize,
-      format: ext.toUpperCase(),
-      contentType: declaredType || (ext === 'mov' ? 'video/quicktime' : `video/${ext}`),
+      success: true, signedUrl, publicUrl, fileName: uniqueFileName, originalName: rawFileName,
+      fileSize: declaredSize, format: ext.toUpperCase(), contentType,
     });
   } catch (err: any) {
-    console.error('[SIGNED VIDEO UPLOAD URL ERROR]', err);
-    return res.status(500).json({ success: false, error: `Impossible de préparer l’envoi direct vers Supabase : ${typeof err?.message === 'string' ? err.message : 'erreur inconnue'}` });
+    console.error('[SIGNED R2 VIDEO UPLOAD URL ERROR]', err);
+    const missing = err?.message === 'R2_ENV_MISSING' || err?.message === 'R2_PUBLIC_URL_MISSING';
+    return res.status(missing ? 503 : 500).json({
+      success: false,
+      error: missing
+        ? 'Cloudflare R2 n’est pas encore configuré dans Render (variables R2 manquantes).'
+        : `Impossible de préparer l’envoi vers Cloudflare R2 : ${typeof err?.message === 'string' ? err.message : 'erreur inconnue'}`,
+    });
   }
 });
 
