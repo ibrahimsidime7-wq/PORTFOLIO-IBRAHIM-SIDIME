@@ -433,7 +433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error };
     }
     const validExtensions = ['mp4', 'webm', 'mov'];
-    const extMatch = file.name.match(/\\.([a-zA-Z0-9]+)$/);
+    const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
     const ext = extMatch ? extMatch[1].toLowerCase() : '';
     const validMimes = ['video/mp4', 'video/webm', 'video/quicktime'];
     if (!validExtensions.includes(ext) && !validMimes.includes(file.type)) {
