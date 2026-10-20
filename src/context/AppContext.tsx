@@ -622,8 +622,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Échec de la création du projet');
-      const resData = await res.json();
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.error || `Création refusée (HTTP ${res.status})`);
+      }
       setProjects((prev) => [resData.project, ...prev]);
       setStats((prev) => ({
         ...prev,
@@ -660,8 +662,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'PUT',
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Échec de la mise à jour du projet.');
-      const resData = await res.json();
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.error || `Mise à jour refusée (HTTP ${res.status})`);
+      }
       setProjects((prev) => prev.map((p) => (p.id === id ? resData.project : p)));
       const formattedDate = formatSaveDateTime(resData.lastUpdated);
       showToast(`✓ Projet mis à jour (${formattedDate})`, 'success');
