@@ -31,10 +31,12 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (authStatus !== 'loading' || currentRoute !== '/admin') return;
     const timeoutId = window.setTimeout(() => {
-      navigate('/login');
+      // Use location directly here: navigate is recreated on renders, which can
+      // otherwise restart this timer continuously and prevent recovery.
+      window.location.hash = '/login';
     }, 12000);
     return () => window.clearTimeout(timeoutId);
-  }, [authStatus, currentRoute, navigate]);
+  }, [authStatus, currentRoute]);
 
   // Clean initial loading screen while database is booting or admin session is verifying
   if (isDatabaseLoading || (authStatus === 'loading' && currentRoute === '/admin')) {
