@@ -1186,10 +1186,84 @@ app.post('/api/messages', async (req: Request, res: Response) => {
     db.messages.unshift(newMessage);
     db.stats.receivedMessages = db.messages.length;
     await saveDatabase(db);
+
+    // Optional automatic email notification via Resend.
+    // Configure RESEND_API_KEY and CONTACT_FROM_EMAIL in Render.
+    let emailSent = false;
+    const resendKey = process.env.RESEND_API_KEY?.trim();
+    const fromEmail = process.env.CONTACT_FROM_EMAIL?.trim();
+    const notificationEmail = process.env.CONTACT_NOTIFICATION_EMAIL?.trim() || ADMIN_EMAIL;
+
+    if (resendKey && fromEmail && notificationEmail) {
+      try {
+        const receivedAt = new Intl.DateTimeFormat('fr-FR', {
+          dateStyle: 'full',
+          timeStyle: 'short',
+          timeZone: 'Africa/Abidjan',
+        }).format(new Date(newMessage.timestamp));
+        const emailBody = [
+          'NOUVELLE DEMANDE DE CONTACT',
+          'Portfolio professionnel — IBRAHIM SIDIME',
+          '',
+          'Bonjour Ibrahim,',
+          '',
+          'Une personne vous contacte au sujet d’un projet.',
+          '',
+          'INFORMATIONS DU CONTACT',
+          'Nom / Entreprise : ' + newMessage.name,
+          'E-mail : ' + (newMessage.email || 'Non renseigné'),
+          'Téléphone : ' + (newMessage.phone || 'Non renseigné'),
+          'Prestation : ' + newMessage.projectType,
+          'Reçu le : ' + receivedAt,
+          '',
+          'MESSAGE DU CLIENT',
+          newMessage.message,
+          '',
+          'Répondez au contact à partir des coordonnées ci-dessus.',
+          '',
+          'IBRAHIM SIDIME',
+          'Vidéaste • Monteur vidéo',
+          'Abidjan, Côte d’Ivoire',
+        ].join('\\n');
+
+        const emailResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: fromEmail,
+            to: [notificationEmail],
+            subject: `[Portfolio] Nouvelle demande — ${newMessage.projectType} | ${newMessage.name}`,
+            text: emailBody,
+            ...(newMessage.email && newMessage.email.includes('@')
+              ? { reply_to: newMessage.email }
+              : {}),
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          const details = await emailResponse.text();
+          console.error('[Contact email] Resend rejected notification:', emailResponse.status, details);
+        } else {
+          emailSent = true;
+          console.log('[Contact email] Notification sent for message:', newMessage.id);
+        }
+      } catch (emailError) {
+        console.error('[Contact email] Notification failed:', emailError);
+      }
+    } else {
+      console.warn('[Contact email] Not configured: set RESEND_API_KEY and CONTACT_FROM_EMAIL in Render.');
+    }
+
     res.json({
       success: true,
       message: newMessage,
-      confirmation: 'Votre message a bien été enregistré. Ibrahim vous répondra sous peu.',
+      emailSent,
+      confirmation: emailSent
+        ? 'Votre message a été enregistré et la notification a été envoyée.'
+        : 'Votre message a bien été enregistré. La notification par e-mail automatique est momentanément indisponible.',
     });
   } catch (err: any) {
     console.error('Error saving message:', err);
