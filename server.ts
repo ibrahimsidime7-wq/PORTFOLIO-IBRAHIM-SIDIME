@@ -654,7 +654,7 @@ function signR2PutUrl(objectKey: string): string {
     'X-Amz-SignedHeaders': 'host',
   };
   const canonicalQuery = Object.entries(query)
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([key, value]) => `${awsEncode(key)}=${awsEncode(value)}`)
     .join('&');
   const canonicalRequest = ['PUT', canonicalUri, canonicalQuery, `host:${host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
