@@ -19,8 +19,44 @@ export const ContactModal: React.FC = () => {
   const targetEmail = 'ibrahimsidime7@gmail.com';
 
   const generateEmailData = (clientName: string, clientContact: string, type: string, content: string) => {
-    const subject = `[Portfolio] Demande de ${type} - ${clientName}`;
-    const body = `Bonjour Ibrahim,\n\nJe vous contacte via votre portfolio professionnel concernant une prestation vidéo.\n\nDÉTAILS DE MA DEMANDE :\n- Nom / Entreprise : ${clientName}\n- Coordonnées de contact (Email / Téléphone) : ${clientContact}\n- Type de projet : ${type}\n\nMESSAGE :\n${content}\n\nMessage transmis directement à votre boîte Gmail : ${targetEmail}`;
+    const receivedAt = new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+      timeZone: 'Africa/Abidjan',
+    }).format(new Date());
+    const subject = `[Portfolio] Nouvelle demande — ${type} | ${clientName}`;
+    const body = `NOUVELLE DEMANDE DE CONTACT
+Portfolio professionnel — IBRAHIM SIDIME
+
+Bonjour Ibrahim,
+
+Une personne souhaite échanger avec vous au sujet d’un projet.
+Voici les informations transmises via votre formulaire de contact.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFORMATIONS DU CONTACT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nom / Entreprise : ${clientName}
+E-mail / Téléphone : ${clientContact}
+Prestation souhaitée : ${type}
+Reçu le : ${receivedAt}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MESSAGE DU CLIENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${content}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROCHAINE ÉTAPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Répondez directement à ce contact à l’adresse e-mail ou au numéro indiqué ci-dessus.
+
+Cette demande a été enregistrée dans le tableau de bord du portfolio.
+Destinataire de ce courriel : ${targetEmail}
+
+IBRAHIM SIDIME
+Vidéaste • Monteur vidéo
+Abidjan, Côte d’Ivoire`;
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     const mailtoUrl = `mailto:${encodeURIComponent(targetEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     return { gmailUrl, mailtoUrl };
