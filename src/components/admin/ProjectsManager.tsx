@@ -180,6 +180,46 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
     reader.readAsDataURL(file);
   };
 
+  // Create a real thumbnail from the uploaded video file (no AI image generation).
+  const createVideoThumbnail = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadedmetadata = () => {
+      const targetTime = Number.isFinite(video.duration) && video.duration > 1 ? 1 : 0;
+      try {
+        video.currentTime = targetTime;
+      } catch (err) {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      }
+    };
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        if (!ctx || !video.videoWidth || !video.videoHeight) throw new Error('Impossible de lire une image de la vidéo.');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.86);
+        URL.revokeObjectURL(objectUrl);
+        resolve(dataUrl);
+      } catch (err) {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      }
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Ce format vidéo ne permet pas de créer automatiquement une miniature dans le navigateur.'));
+    };
+    video.src = objectUrl;
+    video.load();
+  });
+
   // Direct video upload into modal (Persistent stream to /api/upload-video)
   const handleDirectVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -210,7 +250,19 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
         setVideoUrl(res.videoUrl);
         setVideoFileName(file.name);
         setVideoFileSize(`${totalMb} Mo`);
-        showToast('✓ Vidéo téléversée avec succès sur le serveur !', 'success');
+        try {
+          showToast('Création de la miniature depuis la vidéo...', 'info');
+          const thumbnailDataUrl = await createVideoThumbnail(file);
+          const thumbnailUrl = await uploadMedia(thumbnailDataUrl, `project_thumb_${Date.now()}`);
+          if (!thumbnailUrl || thumbnailUrl.startsWith('data:')) {
+            throw new Error('Le stockage n’a pas renvoyé une URL persistante.');
+          }
+          setThumbnail(thumbnailUrl);
+          showToast('Vidéo envoyée et miniature créée automatiquement. Clique sur Enregistrer pour appliquer les changements.', 'success');
+        } catch (thumbnailError) {
+          console.warn('Automatic video thumbnail failed:', thumbnailError);
+          showToast('Vidéo envoyée. La miniature automatique n’a pas pu être créée pour ce format ; tu peux choisir une image manuellement.', 'info');
+        }
       } else {
         showToast(res.error || 'Échec du téléversement de la vidéo.', 'error');
       }
