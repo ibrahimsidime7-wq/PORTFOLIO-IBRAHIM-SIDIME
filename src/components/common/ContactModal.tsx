@@ -213,7 +213,7 @@ Abidjan, Côte d’Ivoire`;
               </a>
 
               <a
-                href={`https://wa.me/225${profile.phone.replace(/\s+/g, '')}?text=Bonjour%20Ibrahim,%20je%20souhaite%20discuter%20d'un%20projet%20vid%C3%A9o`}
+                href={`https://wa.me/225${profile.phone.replace(/\D/g, '')}?text=${encodeURIComponent("Bonjour Ibrahim ! Je souhaite discuter avec vous d’un projet vidéo et connaître vos disponibilités. Seriez-vous disponible pour en échanger ?")}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-900/30 text-xs font-semibold transition-all hover:scale-[1.02]"
