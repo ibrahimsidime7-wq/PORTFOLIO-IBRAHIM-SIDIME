@@ -657,7 +657,7 @@ function signR2PutUrl(objectKey: string): string {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => `${awsEncode(key)}=${awsEncode(value)}`)
     .join('&');
-  const canonicalRequest = ['PUT', canonicalUri, canonicalQuery, `host:${host}`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
+  const canonicalRequest = ['PUT', canonicalUri, canonicalQuery, `host:${host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
   const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, crypto.createHash('sha256').update(canonicalRequest).digest('hex')].join('\n');
   const hmac = (key: Buffer | string, value: string) => crypto.createHmac('sha256', key).update(value).digest();
   const dateKey = hmac(`AWS4${secretAccessKey}`, dateStamp);
