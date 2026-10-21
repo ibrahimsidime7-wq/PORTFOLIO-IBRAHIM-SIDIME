@@ -444,6 +444,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const token = adminToken || localStorage.getItem('ibrahim_admin_token') || '';
+
+      // Use the existing server-side Supabase upload for files up to 50 MiB.
+      // This avoids browser-to-R2 CORS/signature failures for ordinary portfolio videos.
+      const SERVER_UPLOAD_MAX = 50 * 1024 * 1024;
+      if (file.size <= SERVER_UPLOAD_MAX) {
+        const response = await fetch('/api/upload-video', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-File-Name': encodeURIComponent(file.name),
+            'X-File-Size': String(file.size),
+            'X-File-Type': file.type || 'video/mp4',
+            'Content-Type': 'application/octet-stream',
+          },
+          body: file,
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success || !result.url) {
+          const error = result.error || `Échec de l’envoi vidéo (HTTP ${response.status}).`;
+          showToast(error, 'error');
+          return { success: false, error };
+        }
+        showToast('Vidéo envoyée avec succès.', 'success');
+        return {
+          success: true,
+          videoUrl: result.url,
+          fileName: result.fileName || file.name,
+          fileSize: file.size,
+          format: result.format || ext.toUpperCase(),
+        };
+      }
+
       const prepare = await fetch('/api/video-upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
