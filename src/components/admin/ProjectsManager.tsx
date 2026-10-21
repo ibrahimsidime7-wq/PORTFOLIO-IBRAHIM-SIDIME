@@ -117,7 +117,7 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
     setClient('');
     setDate(new Date().toISOString().split('T')[0]);
     setDuration('30s');
-    setThumbnail(projects[0]?.thumbnail || '/uploads/thumb_publicite.jpg');
+    setThumbnail('/uploads/thumb_publicite.jpg');
     setVideoUrl('');
     setVideoFileName('');
     setVideoFileSize('');
@@ -144,26 +144,40 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
     setIsCreateModalOpen(true);
   };
 
-  // Thumbnail upload
+  // Upload thumbnail to persistent media storage before saving the project.
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (uploadEvent) => {
-        if (uploadEvent.target?.result) {
-          const dataUri = uploadEvent.target.result as string;
-          try {
-            showToast('Téléversement de la miniature...', 'info');
-            const url = await uploadMedia(dataUri, `thumb_${Date.now()}`);
-            setThumbnail(url);
-            showToast('Miniature importée et enregistrée !', 'success');
-          } catch {
-            setThumbnail(dataUri);
-          }
-        }
-      };
-      reader.readAsDataURL(file);
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Choisis un fichier image valide.', 'error');
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onerror = () => showToast("Impossible de lire cette image. Réessaie.", 'error');
+    reader.onload = async () => {
+      const dataUri = typeof reader.result === 'string' ? reader.result : '';
+      if (!dataUri) {
+        showToast("Impossible de lire cette image. Réessaie.", 'error');
+        return;
+      }
+      try {
+        showToast('Téléversement de la miniature...', 'info');
+        const url = await uploadMedia(dataUri, `project_thumb_${Date.now()}`);
+        if (!url || url.startsWith('data:')) {
+          throw new Error('Le serveur n’a pas renvoyé une URL d’image persistante.');
+        }
+        setThumbnail(url);
+        showToast('Miniature chargée. Enregistre le projet pour appliquer le changement.', 'success');
+      } catch (err) {
+        console.error('Thumbnail upload error:', err);
+        showToast("Échec du téléversement de la miniature. Le projet n’a pas été modifié.", 'error');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // Direct video upload into modal (Persistent stream to /api/upload-video)
@@ -815,20 +829,36 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
                   onChange={handleThumbnailUpload}
                   className="hidden"
                 />
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                  >
-                    <Upload className="w-4 h-4 text-orange-400" />
-                    <span>Choisir une image de couverture</span>
-                  </button>
-                  {thumbnail && (
-                    <div className="w-14 h-10 rounded-lg overflow-hidden border border-orange-500/60 shrink-0">
-                      <img src={thumbnail} alt="Aperçu" className="w-full h-full object-cover" />
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <Upload className="w-4 h-4 text-orange-400" />
+                      <span>{thumbnail && thumbnail !== '/uploads/thumb_publicite.jpg' ? 'Remplacer la miniature' : 'Choisir une image de couverture'}</span>
+                    </button>
+                    {thumbnail && (
+                      <div className="w-20 h-14 rounded-lg overflow-hidden border border-orange-500/60 shrink-0 bg-slate-900">
+                        <img src={thumbnail} alt="Aperçu de la miniature" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                  {thumbnail && thumbnail !== '/uploads/thumb_publicite.jpg' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setThumbnail('/uploads/thumb_publicite.jpg');
+                        showToast('Miniature réinitialisée. Enregistre le projet pour appliquer le changement.', 'info');
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Supprimer la miniature personnalisée</span>
+                    </button>
                   )}
+                  <p className="text-[10px] text-slate-500">Après avoir choisi ou supprimé une miniature, clique sur « Enregistrer » en bas du formulaire.</p>
                 </div>
               </div>
 
