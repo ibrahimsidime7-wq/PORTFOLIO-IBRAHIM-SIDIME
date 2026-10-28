@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Play, Mail, Film, Sparkles, Video } from 'lucide-react';
+import { Logo } from '../common/Logo';
 
 export const HeroProfile: React.FC = () => {
   const { profile, setIsContactModalOpen, setContactModalType } = useApp();
@@ -34,6 +35,9 @@ export const HeroProfile: React.FC = () => {
 
         {/* Center: Profile Bio & Direct CTAs */}
         <div className="lg:col-span-5 text-center lg:text-left space-y-4">
+          <div className="flex justify-center lg:justify-start pb-1">
+            <Logo size="lg" className="scale-90 origin-center lg:origin-left" />
+          </div>
           <div className="inline-flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest">
             <span>{profile.tagline || 'BIENVENUE SUR MON PORTFOLIO'}</span>
           </div>
