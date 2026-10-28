@@ -7,48 +7,32 @@ interface LogoProps {
   className?: string;
 }
 
+/** Responsive SIDIME wordmark. Uses the site's existing orange accent and dark-theme contrast. */
 export const Logo: React.FC<LogoProps> = ({ size = 'md', onClick, className = '' }) => {
-  const iconSize = size === 'sm' ? 'w-6 h-6' : size === 'lg' ? 'w-9 h-9' : 'w-7 h-7';
-  const titleSize = size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg tracking-wider' : 'text-base tracking-wide';
-  const subSize = size === 'sm' ? 'text-[9px]' : size === 'lg' ? 'text-[11px]' : 'text-[10px]';
+  const wordSize = size === 'sm' ? 'text-2xl' : size === 'lg' ? 'text-4xl' : 'text-3xl';
+  const taglineSize = size === 'sm' ? 'text-[7px]' : size === 'lg' ? 'text-[9px]' : 'text-[8px]';
 
   return (
-    <div 
+    <button
+      type="button"
       onClick={onClick}
-      className={`flex items-center gap-3 cursor-pointer select-none group transition-opacity hover:opacity-95 ${className}`}
+      aria-label="SIDIME — Retour à l’accueil"
+      className={`inline-flex items-center gap-2.5 cursor-pointer select-none group transition-opacity hover:opacity-90 ${className}`}
     >
-      {/* Orange geometric play triangle icon */}
-      <div className={`relative flex items-center justify-center shrink-0 ${iconSize}`}>
-        <svg 
-          viewBox="0 0 32 32" 
-          fill="none" 
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full drop-shadow-[0_0_12px_rgba(255,106,0,0.5)] transition-transform group-hover:scale-105 duration-200"
-        >
-          <polygon 
-            points="6,4 28,16 6,28" 
-            stroke="#ff6a00" 
-            strokeWidth="3.5" 
-            strokeLinejoin="round"
-            className="transition-colors group-hover:stroke-orange-400"
-          />
-          <polygon 
-            points="12,11 20,16 12,21" 
-            fill="#ff6a00" 
-            opacity="0.9"
-          />
+      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-orange-500/40 bg-orange-500/10 text-orange-400 shadow-[0_0_22px_rgba(249,115,22,0.12)] transition-colors group-hover:bg-orange-500/20">
+        <svg viewBox="0 0 36 36" aria-hidden="true" className="h-6 w-6" fill="none">
+          <rect x="3.5" y="6.5" width="29" height="23" rx="5" stroke="currentColor" strokeWidth="1.7"/>
+          <path d="M15 12.5L24 18L15 23.5V12.5Z" fill="currentColor"/>
         </svg>
-      </div>
-
-      <div className="flex flex-col leading-tight">
-        <div className={`font-bold font-syne text-white flex items-center gap-1.5 ${titleSize}`}>
-          <span>IBRAHIM</span>
-          <span className="text-orange-500 font-extrabold">SIDIME</span>
-        </div>
-        <span className={`text-slate-400 font-medium tracking-wider uppercase ${subSize}`}>
-          MONTEUR VIDÉO & CRÉATEUR DE CONTENU
+      </span>
+      <span className="flex min-w-0 flex-col items-start leading-none">
+        <span className={`font-syne font-extrabold italic tracking-[-0.065em] text-white ${wordSize}`}>
+          SIDIME<span className="text-orange-500">.</span>
         </span>
-      </div>
-    </div>
+        <span className={`mt-1 whitespace-nowrap font-semibold uppercase tracking-[0.16em] text-slate-400 ${taglineSize}`}>
+          MONTEUR • CRÉATEUR DE CONTENU
+        </span>
+      </span>
+    </button>
   );
 };
