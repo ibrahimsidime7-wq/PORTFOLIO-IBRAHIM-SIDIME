@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "SIDIME — Portfolio",
+  "short_name": "SIDIME",
+  "description": "Portfolio professionnel d’Ibrahim Sidime, monteur vidéo et créateur de contenu.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#070a12",
+  "icons": [
+    {
+      "src": "/2F346051-228F-439E-8AA8-4233F84A9DB6.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
