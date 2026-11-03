@@ -7,14 +7,14 @@ interface LogoProps {
   className?: string;
 }
 
-/** Logo SIDIME original fourni dans l'identité visuelle. */
+/** Symbole seul de l'identité visuelle SIDIME. */
 export const Logo: React.FC<LogoProps> = ({ size = 'md', onClick, className = '' }) => {
   const dimensions =
     size === 'sm'
-      ? 'w-36 sm:w-40'
+      ? 'h-9 w-9 sm:h-10 sm:w-10'
       : size === 'lg'
-        ? 'w-56 sm:w-64'
-        : 'w-44 sm:w-52';
+        ? 'h-16 w-16 sm:h-20 sm:w-20'
+        : 'h-12 w-12 sm:h-14 sm:w-14';
 
   return (
     <button
@@ -26,14 +26,7 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', onClick, className = ''
       <img
         src="/2F346051-228F-439E-8AA8-4233F84A9DB6.png"
         alt="Symbole SIDIME"
-        className="mr-2 h-9 w-9 sm:h-11 sm:w-11 shrink-0 object-contain"
-        loading="eager"
-        decoding="async"
-      />
-      <img
-        src="/5B245A2C-DF43-4A30-9544-AA3585BF6F7C.png"
-        alt="SIDIME — Monteur • Créateur de contenu"
-        className={`block h-auto max-w-full object-contain ${dimensions}`}
+        className={`block ${dimensions} object-contain`}
         loading="eager"
         decoding="async"
       />
